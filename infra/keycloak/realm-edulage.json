@@ -86,7 +86,10 @@
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "unia.author",
@@ -102,7 +105,10 @@
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "unib.admin",
@@ -118,7 +124,10 @@
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "unib.instructor",
@@ -129,7 +138,7 @@
       "emailVerified": true,
       "attributes": {
         "edulage_roles": [
-          "instructor:course-v1:UNIB+MGT101+2026"
+          "learner"
         ],
         "edulage_status": [
           "active"
@@ -145,7 +154,7 @@
       "emailVerified": true,
       "attributes": {
         "edulage_roles": [
-          "teaching_assistant:course-v1:UNIB+MGT101+2026"
+          "learner"
         ],
         "edulage_status": [
           "active"
@@ -161,12 +170,15 @@
       "emailVerified": true,
       "attributes": {
         "edulage_roles": [
-          "oec_support"
+          "oec_support:UNIA"
         ],
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "sam.suspended",
@@ -198,7 +210,10 @@
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "unia.programme",
@@ -214,7 +229,10 @@
         "edulage_status": [
           "active"
         ]
-      }
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
     },
     {
       "username": "unib.trainer",
@@ -230,7 +248,81 @@
         "edulage_status": [
           "active"
         ]
+      },
+      "groups": [
+        "/edulage-staff"
+      ]
+    },
+    {
+      "username": "bola.pending",
+      "email": "bola.pending@example.org",
+      "firstName": "Bola",
+      "lastName": "Pending",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "learner"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "uv.learner",
+      "email": "uv.learner@example.org",
+      "firstName": "Unverified",
+      "lastName": "Learner",
+      "enabled": true,
+      "emailVerified": false,
+      "attributes": {
+        "edulage_roles": [
+          "learner"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "dupe.learner",
+      "email": "dupe.learner@example.org",
+      "firstName": "Dupe",
+      "lastName": "Learner",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "learner"
+        ],
+        "edulage_status": [
+          "active"
+        ]
       }
     }
-  ]
+  ],
+  "groups": [
+    {
+      "name": "edulage-staff",
+      "path": "/edulage-staff",
+      "attributes": {
+        "description": [
+          "Institution/EduLage/OEC staff: MFA (OTP) required in production via conditional browser flow"
+        ]
+      }
+    }
+  ],
+  "bruteForceProtected": true,
+  "failureFactor": 10,
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0
 }

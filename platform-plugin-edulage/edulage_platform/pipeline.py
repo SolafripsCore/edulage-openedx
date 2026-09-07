@@ -1,105 +1,79 @@
 """
-python-social-auth pipeline step: project EduLage role claims onto Open edX access roles.
+python-social-auth pipeline steps for the EduLage IdP backend.
 
-Claim format (``edulage_roles`` in the ID token / userinfo):
+``link_verified_account`` runs before Open edX's ``associate_by_email_if_oauth`` and decides
+whether an existing LMS account may be linked to the EduLage identity:
 
-    edulage_admin                       -> Django is_staff + GlobalStaff
-    oec_support                         -> SupportStaffRole (learner support, no academic authority)
-    institution_admin:<ORG>             -> OrgStaffRole + OrgInstructorRole + OrgContentCreatorRole
-    programme_admin:<ORG>               -> OrgStaffRole      (Open edX has no programme scope; see report)
-    course_author:<ORG>                 -> OrgContentCreatorRole (+ CourseCreator row for Studio)
-    trainer:<ORG>                       -> OrgContentCreatorRole
-    instructor:<course-v1:...>          -> CourseInstructorRole
-    teaching_assistant:<course-v1:...>  -> CourseLimitedStaffRole
-    learner                             -> no role (access comes from enrolment only)
+* only when the IdP asserts ``email_verified=true`` (issuer is already validated by the OIDC
+  backend against the configured ``OIDC_ENDPOINT``);
+* by case-normalised e-mail, only if exactly one active account matches;
+* never if that account is already linked to a different EduLage identity;
+* every decision (link / refusal) is written to ``IdentityAudit``.
 
-Roles managed by this step are reconciled on every login: anything previously granted by
-EduLage that is no longer claimed is revoked, so suspending an institution admin in EduLage
-takes effect at their next SSO. Roles granted directly in Open edX by other means are not
-touched.
+Unverified or ambiguous matches are refused rather than silently creating a duplicate or linking
+the wrong account; recovery is manual via Django admin. A refusal returns a redirect to the login
+page instead of raising: the LMS runs views in a transaction (``ATOMIC_REQUESTS``), so raising
+would roll the audit row back.
+
+``sync_edulage_identity`` runs after the account exists: it projects the compact
+``edulage_roles`` claim onto Open edX roles (source ``token``), applies admissions that were
+recorded before the learner's first login, and shortens the session for staff.
 """
-import logging
+from urllib.parse import urlencode
 
-from django.contrib.auth.models import Group
-from opaque_keys import InvalidKeyError
-from opaque_keys.edx.keys import CourseKey
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.http import HttpResponseRedirect
 
+from . import identity
+from .middleware import STAFF_SESSION_KEY
 from .models import ManagedRole
 
-log = logging.getLogger(__name__)
-
-EDULAGE_BACKEND = "edulage"
-
-ORG_ROLES = {
-    "institution_admin": ("staff", "instructor", "org_course_creator_group"),
-    "programme_admin": ("staff",),
-    "course_author": ("org_course_creator_group",),
-    "trainer": ("org_course_creator_group",),
-}
-COURSE_ROLES = {
-    "instructor": "instructor",
-    "teaching_assistant": "limited_staff",
-}
+User = get_user_model()
 
 
-def _desired_roles(claims):
-    """Return {(role, org, course_id)} derived from claim strings."""
-    desired = set()
-    for claim in claims:
-        name, _, scope = claim.partition(":")
-        if name in ORG_ROLES and scope:
-            for role in ORG_ROLES[name]:
-                desired.add((role, scope, ""))
-        elif name in COURSE_ROLES and scope:
-            try:
-                key = CourseKey.from_string(scope)
-            except InvalidKeyError:
-                log.warning("edulage: ignoring role claim with invalid course key %r", claim)
-                continue
-            desired.add((COURSE_ROLES[name], key.org, str(key)))
-        elif name == "oec_support":
-            desired.add(("support", "", ""))
-    return desired
+def _refuse(backend, reason, **audit_kwargs):
+    identity.audit("link_refused", detail=reason, **audit_kwargs)
+    return HttpResponseRedirect(f"{settings.LOGIN_URL}?{urlencode({'edulage_error': 'link_refused'})}")
 
 
-def _access_role_kwargs(user, role, org, course_id):
-    kwargs = {"user": user, "role": role, "org": org}
-    if course_id:
-        kwargs["course_id"] = CourseKey.from_string(course_id)
-    return kwargs
-
-
-def sync_edulage_roles(backend, user=None, response=None, *args, **kwargs):  # pylint: disable=unused-argument
-    if backend.name != EDULAGE_BACKEND or user is None or response is None:
+def link_verified_account(backend, details, response=None, user=None, uid=None, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg
+    if backend.name != identity.EDULAGE_BACKEND or user is not None or response is None:
         return {}
-    from common.djangoapps.student.models import CourseAccessRole  # pylint: disable=import-outside-toplevel
+    email = (details.get("email") or "").strip().lower()
+    if not email:
+        return {}
+    matches = list(User.objects.filter(email__iexact=email))
+    if not matches:
+        return {}
+    if response.get("email_verified") is not True:
+        return _refuse(backend, "email not verified by IdP", sub=uid, email=email)
+    if len(matches) > 1:
+        return _refuse(backend, f"{len(matches)} accounts share this e-mail", sub=uid, email=email)
+    existing = matches[0]
+    other_sub = identity.sub_for_user(existing)
+    if other_sub and other_sub != uid:
+        return _refuse(backend, "account linked to another identity", user=existing, sub=uid, email=email)
+    if not existing.is_active:
+        return _refuse(backend, "account is deactivated", user=existing, sub=uid, email=email)
+    if not other_sub:
+        identity.audit("linked", user=existing, sub=uid, email=email, detail=f"linked {existing.username} by verified e-mail")
+    return {"user": existing, "is_new": False, "edulage_linked": True}
 
+
+def sync_edulage_identity(backend, user=None, response=None, uid=None, new_association=False, edulage_linked=False, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg
+    if backend.name != identity.EDULAGE_BACKEND or user is None or response is None:
+        return {}
     claims = response.get("edulage_roles", [])
-    desired = _desired_roles(claims)
+    # Open edX creates the Django user in its registration view, so social-core's ``is_new`` is
+    # unreliable here; a fresh link that was not made by ``link_verified_account`` is a new account.
+    if new_association and not edulage_linked:
+        identity.audit("created", user=user, sub=uid, email=user.email, detail=user.username)
+    identity.apply_roles(user, claims, ManagedRole.SOURCE_TOKEN)
+    identity.apply_pending_admissions(user, uid)
 
-    is_admin = "edulage_admin" in claims
-    if user.is_staff != is_admin and not user.is_superuser:
-        user.is_staff = is_admin
-        user.save(update_fields=["is_staff"])
-
-    current = {(m.role, m.org, m.course_id): m for m in ManagedRole.objects.filter(user=user)}
-    for key, managed in current.items():
-        if key not in desired:
-            role, org, course_id = key
-            CourseAccessRole.objects.filter(**_access_role_kwargs(user, role, org, course_id)).delete()
-            managed.delete()
-            log.info("edulage: revoked %s for %s (%s %s)", role, user.username, org, course_id)
-    for role, org, course_id in desired - set(current):
-        CourseAccessRole.objects.get_or_create(**_access_role_kwargs(user, role, org, course_id))
-        ManagedRole.objects.create(user=user, role=role, org=org, course_id=course_id)
-        log.info("edulage: granted %s to %s (%s %s)", role, user.username, org, course_id)
-
-    if any(r[0] == "org_course_creator_group" for r in desired):
-        _grant_course_creator(user)
+    request = getattr(backend.strategy, "request", None)
+    if request is not None and (user.is_staff or identity.is_staff_claimset(claims) or ManagedRole.objects.filter(user=user).exists()):
+        # enforced on every request by AccountStatusMiddleware (login views reset the expiry)
+        request.session[STAFF_SESSION_KEY] = True
     return {}
-
-
-def _grant_course_creator(user):
-    """Studio only lets members of the course-creator group create courses (per-org via CourseAccessRole)."""
-    group, _ = Group.objects.get_or_create(name="course_creator_group")
-    user.groups.add(group)

@@ -7,9 +7,14 @@ issuer URL, e.g. ``https://auth.edulage.org/realms/edulage``) and ``logout_url``
 Open edX logout also ends the EduLage session (``TPA_AUTOMATIC_LOGOUT_ENABLED``).
 
 Claims expected from the EduLage IdP:
-  sub, email, given_name, family_name, preferred_username
-  edulage_roles: ["learner", "institution_admin:UNIA", "course_author:UNIA", ...]
+  sub (immutable EduLage user id), email, email_verified, given_name, family_name, preferred_username
+  edulage_roles: compact global/institution claims ["learner", "institution_admin:UNIA", "oec_support:UNIA", ...]
+                 (per-course-run entitlements are pushed through the roles API, not the token)
   edulage_status: "active" | "suspended"
+
+The issuer is validated by social-core against ``OIDC_ENDPOINT`` (ID token ``iss`` + JWKS).
+``edulage_status`` at login is a first line of defence only; suspension of a signed-in user is
+pushed by EduLage through ``POST /edulage/api/v1/users/status/`` (see identity.set_account_status).
 """
 from social_core.backends.open_id_connect import OpenIdConnectAuth
 from social_core.exceptions import AuthForbidden

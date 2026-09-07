@@ -1,15 +1,21 @@
 """Positive and negative tenant-isolation checks across LMS, Studio and tenant hosts.
 
-Usage: SPIKE_TEST_PASSWORD=... python scripts/spike/tenant_checks.py
+Usage: SPIKE_TEST_PASSWORD=... EDULAGE_SERVICE_CLIENT_SECRET=... python scripts/spike/tenant_checks.py
+
+Per-course-run roles (instructor, TA) are not token claims: the EduLage control plane pushes them
+through the roles API, so this suite grants them first, exactly as EduLage would.
 
 Each line prints PASS/FAIL, the actor, the check and the observed HTTP status. Exit code is
 non-zero if any check fails, so this can be re-run after every configuration change.
 """
+import os
 import sys
 
 import requests
 
 from spikelib import CMS, LMS, get, sso_session, studio_login
+
+ROLES_API = f"https://{LMS}/edulage/api/v1/roles/"
 
 UNIA = "course-v1:UNIA+CS101+2026"
 UNIB = "course-v1:UNIB+MGT101+2026"
@@ -28,6 +34,18 @@ def course_ids(resp):
     if resp.status_code != 200:
         return f"HTTP {resp.status_code}"
     return sorted(c["id"] if isinstance(c, dict) else c for c in resp.json().get("results", []))
+
+
+def grant_run_roles(username, roles):
+    tok = requests.post(
+        f"https://{LMS}/oauth2/access_token",
+        data={"grant_type": "client_credentials", "client_id": "edulage-control-plane",
+              "client_secret": os.environ["EDULAGE_SERVICE_CLIENT_SECRET"], "token_type": "jwt"},
+        timeout=60,
+    )
+    r = requests.put(ROLES_API, json={"username": username, "roles": roles},
+                     headers={"Authorization": f"JWT {tok.json()['access_token']}"}, timeout=60)
+    check("edulage-svc", f"roles API grants {roles} to {username}", r.status_code == 200, r.status_code)
 
 
 # --- anonymous: tenant hosts only expose their own institution's courses -------------------
@@ -61,6 +79,7 @@ check("unia.admin", "UNIB enrolment list via enrollment API denied", r.status_co
 
 # --- UNIB instructor (course-scoped) ------------------------------------------------------
 b = sso_session("unib.instructor")
+grant_run_roles(b.lms_username, [f"instructor:{UNIB}"])
 studio_login(b)
 home = get(b, f"https://{CMS}/api/contentstore/v1/home/courses")
 mine = sorted(c["course_key"] for c in home.json().get("courses", [])) if home.ok else f"HTTP {home.status_code}"
@@ -72,6 +91,7 @@ check("unib.instructor", "LMS instructor API, UNIA denied", r.status_code in (40
 
 # --- UNIB teaching assistant: limited staff, no Studio ------------------------------------
 t = sso_session("unib.ta")
+grant_run_roles(t.lms_username, [f"teaching_assistant:{UNIB}"])
 studio_login(t)
 home = get(t, f"https://{CMS}/api/contentstore/v1/home/courses")
 mine = sorted(c["course_key"] for c in home.json().get("courses", [])) if home.ok else f"HTTP {home.status_code}"
@@ -88,10 +108,12 @@ home = get(l, f"https://{CMS}/api/contentstore/v1/home/courses")
 mine = sorted(c["course_key"] for c in home.json().get("courses", [])) if home.ok else f"HTTP {home.status_code}"
 check("ada.learner", "learner sees no Studio courses", mine == [] or home.status_code in (302, 403), mine)
 
-# --- OEC support: support tools, no course authority -------------------------------------
+# --- OEC support: scoped learner summary only, no Open edX support console or course authority
 o = sso_session("oec.support")
 r = get(o, f"https://{LMS}/support/")
-check("oec.support", "support dashboard accessible", r.status_code == 200, r.status_code)
+check("oec.support", "Open edX support console denied (scoped SupportScope instead)", r.status_code in (302, 403), r.status_code)
+r = get(o, f"https://{LMS}/edulage/api/v1/support/learners/?username=ada_legacy")
+check("oec.support", "scoped learner summary (UNIA) accessible", r.status_code == 200, r.status_code)
 r = get(o, f"https://{LMS}/api/instructor/v1/tasks/{UNIB}")
 check("oec.support", "no instructor API", r.status_code in (403, 404), r.status_code)
 

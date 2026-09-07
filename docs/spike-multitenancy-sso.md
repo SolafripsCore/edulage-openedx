@@ -1,7 +1,9 @@
 # Spike: multi-tenancy, SSO and admission-gated enrolment on Open edX
 
 **Status:** complete — working proof of concept on the pilot server, all runtime suites green
-(tenant isolation 24/24, admission 21/21, SSO/role sync for the 9 EduLage roles).
+(tenant isolation 24/24, admission 21/21, SSO/role sync for the 9 EduLage roles), followed by the
+**controlled hardening** pass requested in the team review (§14: hardening items 1–10, compatibility
+matrix, production acceptance requirements; `scripts/spike/hardening_checks.py`).
 **Scope:** the brief in the colleague review (unified identity, institutional tenancy, academic
 data mapping, admission-gated enrolment, role model, integration ownership, technical output).
 **Verdict:** Open edX can serve as the EduLage learning engine behind `edulage.org` with a shared
@@ -93,21 +95,33 @@ Studio sessions are OAuth2 children of the LMS session and expire with it.
 | Secure logout | ✔ | `/logout` → 302 to IdP end-session; `/api/user/v1/me` → 401 afterwards |
 | Account linking (pre-existing LMS user) | ✔ | Legacy account seeded with same email; SSO attaches `UserSocialAuth`, no duplicate user |
 | Role/permission claims | ✔ | `edulage_roles` claim → `CourseAccessRole` (§4); revocation re-tested (`kc_set_roles.sh`) |
-| Suspended/deactivated users | ✔ | `edulage_status=suspended` → `AuthForbidden` at login; API refuses (409) to admit `is_active=False` users |
+| Suspended/deactivated users | ✔ | `edulage_status=suspended` → `AuthForbidden` at login; `POST /users/status/` suspends **immediately** (§14.4); API refuses (409) to admit `is_active=False` users |
+| Account linking safety | ✔ | `email_verified` required, case-normalised match, ambiguity/already-linked refused and audited (§14.3) |
 | Start learning without another login | ✔ | admission suite: courseware 200 in the same SSO session |
 
 Claims contract (what the production EduLage IdP must issue):
 
 ```json
-{ "sub": "<edulage user id>", "email": "...", "name": "...",
+{ "sub": "<edulage user id — immutable, the cross-system principal>",
+  "email": "...", "email_verified": true, "given_name": "...", "family_name": "...",
+  "preferred_username": "...",
   "edulage_status": "active" | "suspended" | "deactivated",
-  "edulage_roles": ["learner", "institution_admin:UNIA", "instructor:course-v1:UNIB+MGT101+2026", ...] }
+  "edulage_roles": ["learner", "edulage_admin", "institution_admin:UNIA", "programme_admin:UNIA",
+                    "course_author:UNIA", "trainer:UNIB", "oec_support:UNIA"] }
 ```
 
-**Stand-in:** Keycloak 26 (`infra/keycloak/`) plays the EduLage IdP because the Next.js site has no
-identity service yet. Nothing in Open edX depends on Keycloak — only on the OIDC discovery document
-at `OIDC_ENDPOINT` and the two custom claims. Replacing it with Auth.js/Ory/Supabase Auth issuing
-the same claims is a configuration change (`OAuth2ProviderConfig.other_settings.OIDC_ENDPOINT`).
+Claims are **compact** (global and institution-level only). Per-course-run entitlements
+(`instructor:<run>`, `teaching_assistant:<run>`, `oec_support:<ORG>:<run>`) are *not* carried in
+tokens; EduLage pushes them through the audited roles API (§7.1, §14.6).
+
+**Identity provider decision (hardening item 1):** EduLage does *not* build its own OIDC issuer in
+Next.js. Production identity is a mature OIDC provider — Keycloak (as run here, PostgreSQL-backed) or
+an equivalent managed service — configured for MFA on staff/administrator roles, brute-force
+protection, short access-token lifetime, refresh-token revocation and JWKS key rotation. Nothing in
+Open edX depends on the vendor: only the discovery document at `OIDC_ENDPOINT`, the issuer/JWKS
+validation and the claims contract above. `infra/keycloak/` is the reference deployment; the spike
+realm and its test identities are fixtures, disabled with `scripts/spike/kc_disable_test_users.sh`
+before any real user is onboarded.
 
 ## 3. Institutional tenancy
 
@@ -153,14 +167,17 @@ Negative (all denied with 403/404):
 | Emails, certificates, notification templates default to platform branding | Per-tenant `lms_configs` overrides + Indigo theme variables; tested for platform name only |
 | MFEs (learning, account, authn) are org-unaware and read config from `apps.learn.edulage.org` | eox-tenant can serve per-tenant MFE config via `MFE_CONFIG` overrides; not exercised here — theme phase |
 
-Conclusion: **shared tenancy is viable for the pilot and first ~100 institutions with these
-controls**; regulated/large institutions get a dedicated Tutor instance running the same plugin
-(§8) — no contract changes.
+Conclusion: **shared tenancy is pilot-validated with these controls** (two institutions, functional
+isolation tests). No institution-count or concurrency figure is claimed until the load tests in
+§14.11 have been run; regulated/large institutions get a dedicated Tutor instance running the same
+plugin (§8) — no contract changes.
 
 ## 4. Role and permission matrix
 
-Claims are reconciled on every SSO login; roles previously granted by EduLage and no longer claimed
-are revoked (`ManagedRole` table). Roles granted natively in Open edX are untouched.
+Claims are reconciled on every SSO login; roles previously granted by EduLage from the *token* source
+and no longer claimed are revoked. Per-run roles pushed through `PUT /edulage/api/v1/roles/` are
+reconciled independently (`ManagedRole.source = api`): each source revokes only its own grants.
+Roles granted natively in Open edX are untouched. `edulage_admin` is never granted by the API.
 
 | EduLage role | Claim | Open edX projection | Verified capability | Verified denial |
 |---|---|---|---|---|
@@ -168,10 +185,10 @@ are revoked (`ManagedRole` table). Roles granted natively in Open edX are untouc
 | Institution administrator | `institution_admin:<ORG>` | `OrgStaffRole` + `OrgInstructorRole` + `OrgContentCreatorRole` | Studio (own org), instructor API, enrol self in own runs | any other org's Studio/instructor/exports |
 | Programme administrator | `programme_admin:<ORG>` | `OrgStaffRole` | own org runs | other orgs — **programme scope not native** (§9) |
 | Course author | `course_author:<ORG>` | `OrgContentCreatorRole` + Studio creator group | create/edit under own org | other orgs |
-| Instructor | `instructor:<course run>` | `CourseInstructorRole` | Studio + instructor API for that run | other runs/orgs |
-| Teaching assistant | `teaching_assistant:<course run>` | `CourseLimitedStaffRole` | instructor API (limited) | Studio authoring |
+| Instructor | `instructor:<course run>` (roles API) | `CourseInstructorRole` | Studio + instructor API for that run | other runs/orgs |
+| Teaching assistant | `teaching_assistant:<course run>` (roles API) | `CourseLimitedStaffRole` | instructor API (limited) | Studio authoring |
 | Approved trainer | `trainer:<ORG>` | `OrgContentCreatorRole` | author under sponsoring org | other orgs |
-| OEC support officer | `oec_support` | `SupportStaffRole` | `/support/` tools | instructor API, Studio |
+| OEC support officer | `oec_support:<ORG>[:<run>]` | `SupportScope` row (no Open edX role) | `GET /edulage/api/v1/support/learners/` — minimal summary of in-scope learners only | `/support/` tools, instructor API, Studio, grades, other institutions' learners |
 | EduLage administrator | `edulage_admin` | `is_staff` (+ GlobalStaff) | all institutions, Studio, support, Django admin | — |
 
 Revocation proof: `unib.instructor` claim replaced with `learner` → next login `roles: []`; claim
@@ -185,7 +202,9 @@ restored → `instructor` on `course-v1:UNIB+MGT101+2026` re-granted.
 2. Learner (SSO session) tries `POST /api/enrollment/v1/enrollment` → **403**, not enrolled.
 3. EduLage obtains a client-credentials JWT (`edulage-control-plane`) — issued on the platform host,
    **401 on a tenant host**.
-4. `POST /edulage/api/v1/admissions/ {action: admit}` → `Admission(admitted)` + active enrolment.
+4. `POST /edulage/api/v1/admissions/ {sub, action: admit}` → `Admission(admitted)` + active enrolment
+   (200). If the applicant has never signed in, the admission is stored against the EduLage `sub`
+   and the API returns **202 pending**; the first SSO attaches it and enrols automatically (§14.2).
 5. Learner opens the courseware in the same SSO session → 200 ("Start learning", no second login).
 6. Retry of step 4 → 200, no duplicate (idempotent).
 7. `defer` → enrolment deactivated; learner cannot re-enrol directly (403); `admit` again restores.
@@ -193,7 +212,8 @@ restored → `instructor` on `course-v1:UNIB+MGT101+2026` re-granted.
 9. Guard rails: wrong institution for the run → 403; unknown learner → 404; malformed run → 400;
    anonymous → 401; deactivated user → 409.
 10. Course team members (org/course roles) and platform staff bypass the gate (authoring/support).
-11. `GET /edulage/api/v1/admissions/?username=&course_id=` for reconciliation.
+11. `GET /edulage/api/v1/admissions/?sub=&course_id=` for reconciliation (`username=` remains for
+    operator/migration tooling only).
 
 ## 6. Academic data mapping and ownership
 
@@ -202,13 +222,13 @@ restored → `instructor` on `course-v1:UNIB+MGT101+2026` re-granted.
 | Institution | `Organization` + eox `TenantConfig`/`Route` | EduLage | EduLage → Open edX (on verification) | institution code = `org` |
 | Programme | course family (`org+course` in key) | EduLage | none (Open edX has no programme object; listing lives on edulage.org) | `programme_id` ↔ `course` code |
 | Intake / cohort | course run (`course-v1:ORG+CODE+RUN`) | EduLage (schedule) / Open edX (content) | EduLage creates run via Studio API or institution authors; EduLage stores the key | `course_key` |
-| Applicant / learner | `auth.User` + `UserSocialAuth(edulage, sub)` | EduLage identity | JIT at SSO or via admissions API | `sub` (EduLage user id), email |
+| Applicant / learner | `auth.User` + `UserSocialAuth(edulage, sub)` | EduLage identity | pending admission by `sub`, account created/linked at first SSO | `sub` (immutable EduLage user id); email is descriptive only |
 | Application | — | EduLage | not synced | `application_id` (stored on `Admission`) |
-| Admission decision | `edulage_platform.Admission` | Institution (recorded by EduLage) | EduLage → Open edX | `(user, course_key)` unique |
+| Admission decision | `edulage_platform.Admission` | Institution (recorded by EduLage) | EduLage → Open edX | `(edulage_sub, course_key)` unique; `user` attached at first SSO |
 | Enrolment | `CourseEnrollment` | Open edX (derived from Admission) | Open edX → EduLage event | `(user, course_key)` |
 | Withdrawal / deferment | `Admission.status` + inactive `CourseEnrollment` | Institution via EduLage | EduLage → Open edX | as above |
 | Progress / grades | `PersistentCourseGrade`, completion | Open edX | Open edX → EduLage events | `course_key`, `sub` |
-| Completion → credential | `GeneratedCertificate` → EduLage credential record | Institution signs; EduLage issues | Open edX event → EduLage ledger | `certificate uuid` → `credential_id` |
+| Completion → credential | `GeneratedCertificate` → EduLage credential record | **The institution awards and issues the qualification or credential. EduLage records, verifies and makes the credential independently verifiable.** | Open edX event → EduLage ledger | `certificate uuid` → `credential_id` |
 | Results/transcripts | — | Institution | Open edX grades are *evidence*, not the record | — |
 
 Rule: EduLage never reads Open edX tables; it uses the API above and the events below.
@@ -223,15 +243,33 @@ Auth: OAuth2 client credentials → JWT
        grant_type=client_credentials&client_id=edulage-control-plane&client_secret=…&token_type=jwt
   (refused on tenant hosts by eox-tenant; client user is is_staff, scopes: user_id)
 
-POST /edulage/api/v1/admissions/                                 Authorization: JWT <token>
-  {"username": "…" | "email": "…", "course_id": "course-v1:ORG+CODE+RUN",
-   "application_id": "APP-1", "institution": "ORG", "action": "admit"|"withdraw"|"defer"}
-  200 {"username", "course_id", "application_id", "institution", "status", "modified"}
-      idempotent per (user, course run)
-  400 malformed / missing / unknown action   403 institution ≠ course org   404 unknown user
-  409 user account deactivated
+  Caller must be the named service user in the `edulage_integration` Django group (staff status
+  alone is not enough — hardening item 10/§14.10).
 
-GET  /edulage/api/v1/admissions/?username=…&course_id=…          reconciliation
+POST /edulage/api/v1/admissions/                                 Authorization: JWT <token>
+  {"sub": "<edulage user id>", "course_id": "course-v1:ORG+CODE+RUN",
+   "application_id": "APP-1", "institution": "ORG", "action": "admit"|"withdraw"|"defer"}
+  200 {"sub", "username", "pending": false, "course_id", "application_id", "institution", "status", "modified"}
+  202 same body, "pending": true, "username": null   — applicant has no LMS account yet; applied at first SSO
+      idempotent per (sub, course run)
+  400 malformed / missing / unknown action   403 institution ≠ course org
+  409 user account suspended
+  ("username"/"email" instead of "sub": migration/operator tooling only → 404 if unknown)
+
+GET  /edulage/api/v1/admissions/?sub=…&course_id=…               reconciliation
+
+PUT  /edulage/api/v1/roles/   {"sub", "roles": ["instructor:course-v1:…", "teaching_assistant:course-v1:…",
+                                "oec_support:ORG[:course-v1:…]"]}
+  200 — reconciles *API-sourced* grants to exactly this list (token-sourced grants untouched);
+  400 if `edulage_admin` is requested; every grant/revoke → IdentityAudit
+GET  /edulage/api/v1/roles/?sub=…
+
+POST /edulage/api/v1/users/status/  {"sub", "active": false|true, "reason": "…"}
+  200 — immediate suspension / reactivation (§14.4); enrolments preserved
+
+GET  /edulage/api/v1/support/learners/?username=…                (OEC support officer's own SSO session)
+  200 minimal summary (username, in-scope enrolments/admissions) for learners inside the caller's
+      SupportScope; 403 outside scope or without any scope; audited as `support_lookup`
 ```
 
 Stock Open edX APIs EduLage will also use (unchanged):
@@ -293,9 +331,10 @@ tier should be priced accordingly.
    documented for integrators.
 5. **Third-party-auth config is a `ConfigurationModel`** (append-only rows, cached); automation must
    create new rows rather than update.
-6. **Status claim is only evaluated at login.** A user suspended in EduLage keeps an active LMS session
-   until it expires (default 2 weeks). Production: shorten `SESSION_COOKIE_AGE` for staff, and have
-   EduLage call `/api/user/v1/accounts/{u}/deactivate/` (or a plugin endpoint) on suspension.
+6. **Status claim is only evaluated at login** in stock Open edX, and its JWT-cookie authentication
+   accepts inactive users, so `UserStandingMiddleware` alone does not stop an existing API session.
+   Addressed by `POST /users/status/` + `AccountStatusMiddleware` (§14.4): suspension is immediate
+   and staff sessions are clamped to 1 h.
 7. **MFEs are org-unaware**; institution branding inside MFEs requires per-tenant `MFE_CONFIG`
    overrides (theme phase).
 8. **Studio SSO relies on the LMS session** — fine, but Studio has no per-tenant host in this spike;
@@ -307,19 +346,21 @@ Findings (spike):
 
 - eox-tenant host binding of OAuth clients is a strong, free control — keep tenant hosts for
   institutions and reserve the platform host for the control plane and EduLage admins.
-- The service client is `is_staff` + `IsAdminUser`: **over-privileged**. Production: dedicated
-  permission class checking the JWT `client_id`/scope (`edulage:admissions`) instead of staff status,
-  and per-institution service credentials if institutions ever call the API directly (they should
-  not — only EduLage does).
+- The service client was `is_staff` + `IsAdminUser`: **over-privileged**. Now: the integration
+  endpoints require membership of the `edulage_integration` group (a named service user; staff and
+  even `edulage_admin` are refused — verified in `hardening_checks.py`). Institutions never call the
+  API directly — only EduLage does.
 - `ALLOW_PUBLIC_REGISTRATION` should be **false** in production; accounts originate from EduLage.
   Keep the local password login only for `edulage_admin` break-glass (or disable with
   `ENABLE_REQUIRE_THIRD_PARTY_AUTH`).
-- Keycloak here uses dev-file storage and a bootstrap admin: **spike only**. Production IdP must be
-  EduLage's own (Auth.js/Ory/managed Keycloak with Postgres), MFA for staff roles, short-lived tokens,
-  key rotation via JWKS.
-- Secrets: Tutor config, OIDC client secret, service client secret and Keycloak admin password live
-  only on the server (`~/.local/share/tutor/config.yml`, `infra/keycloak/.env`); rotate the spike
-  values before pilot.
+- Keycloak initially ran on dev-file (H2) storage; it now runs on PostgreSQL 16 (`infra/keycloak/`),
+  with brute-force protection, 5-minute access tokens, refresh-token revocation and a TOTP policy in
+  the realm. Conditional OTP for staff/administrators is not yet *enforced* on the spike realm (the
+  scripted tests need password-only logins) — it is a production acceptance requirement (§14.12).
+- Secrets: Tutor config, OIDC client secret, service client secret, Keycloak admin and DB passwords
+  live only on the server (`~/.local/share/tutor/config.yml`, `infra/keycloak/.env`); the Keycloak
+  values were rotated during the Postgres migration; the remaining spike values are rotated in the
+  server-hardening step (§14.10) before any pilot user is onboarded.
 - Admin surfaces (`/admin`, `/support/`, Studio maintenance) restricted to `edulage_admin`; add IP
   allow-listing or an identity-aware proxy for `/admin`.
 - Add rate limiting on `/edulage/api/` and the OAuth token endpoint (Caddy or DRF throttles).
@@ -328,11 +369,13 @@ Findings (spike):
 
 Recommended production design:
 
-- **Identity:** EduLage IdP (OIDC) issuing `edulage_roles`/`edulage_status`; Open edX only trusts it.
+- **Identity:** a mature OIDC provider (PostgreSQL-backed Keycloak or equivalent) operated by EduLage,
+  issuing compact `edulage_roles`/`edulage_status`; Open edX only trusts that issuer.
 - **Tenancy:** shared Tutor deployment + eox-tenant; one tenant host per institution; platform host
   for EduLage admins; dedicated instances as a premium/regulatory tier.
-- **Authorisation:** roles pushed as claims (per-run for programme scope); admission filter on;
-  self-registration off; service-scoped API permission.
+- **Authorisation:** compact claims for global/institution roles; per-run roles and OEC scopes pushed
+  through the audited roles API; admission filter on; self-registration off; integration endpoints
+  restricted to the named service user.
 - **Integration:** admissions API (implemented), webhooks with retries (§7.2), nightly reconciliation.
 - **Hosting:** pilot on the current droplet; move MySQL/Redis to DO managed services and media to
   Spaces before onboarding paying institutions; k8s (DOKS) when >1 LMS replica is needed.
@@ -344,10 +387,10 @@ Estimated in Devin sessions (each roughly a focused working day); external waits
 
 | Work package | Sessions | Notes |
 |---|---|---|
-| EduLage identity service (OIDC issuer with roles/status claims, account linking UI, MFA for staff) | 3–4 | in `SolafripsCore/EduLage`; replaces Keycloak |
+| Production identity provider (PostgreSQL Keycloak or managed OIDC: branded pages, MFA for staff, key rotation, EduLage user sync) | 2–3 | no bespoke issuer; EduLage's Next.js app becomes an OIDC client |
 | Institution onboarding automation (org + tenant + branding + service creds from EduLage admin) | 1–2 | Django management command / API in plugin |
 | Programme/intake → course run sync (create/link runs, validate keys, publish status) | 2 | Studio API + events |
-| Admissions API hardening (service scopes, per-run role push, audit, throttles) | 1 | |
+| Admissions API hardening (service group, admission-by-sub, roles API, suspension, audit) | done | this PR; throttles/rate limits remain |
 | Webhooks/events → EduLage (enrolment, progress, completion) + retries + DLQ | 2 | plugin + Next.js receivers |
 | Credential ledger (completion → institution signing → verifiable credential) | 2–3 | EduLage side mostly |
 | Learner "My Learning" on edulage.org (progress, continue learning, schedule) | 2 | consumes events/APIs |
@@ -359,7 +402,7 @@ Estimated in Devin sessions (each roughly a focused working day); external waits
 
 ## 12. Deployment and repository instructions
 
-Server (`ssh root@165.22.82.204`, then `su - tutor`; Tutor lives in `~/venv`):
+Server (`ssh <admin-user>@165.22.82.204` — named administrator created by `scripts/harden.sh`, root SSH disabled — then `sudo -iu tutor`; Tutor lives in `~/venv`):
 
 ```bash
 git clone https://github.com/SolafripsCore/edulage-openedx && cd edulage-openedx
@@ -369,8 +412,10 @@ rsync -a --exclude __pycache__ platform-plugin-edulage/ ~/platform-plugin-edulag
 # Migrations for the plugin:
 tutor local run lms ./manage.py lms migrate edulage_platform
 
-# Stand-in IdP (spike): infra/keycloak/.env with KEYCLOAK_ADMIN_PASSWORD, then
+# Identity provider (PostgreSQL-backed Keycloak): infra/keycloak/.env with
+# KEYCLOAK_ADMIN_PASSWORD, KC_DB_PASSWORD (and optionally KC_DB_USERNAME), then
 docker compose -f infra/keycloak/docker-compose.yml up -d
+scripts/spike/kc_disable_test_users.sh            # disable spike identities ("enable" to re-enable for tests)
 SPIKE_TEST_PASSWORD=… infra/keycloak/set-test-passwords.sh   # prints EDULAGE_OIDC_SECRET
 
 # Seed institutions, OIDC provider, legacy account, service client:
@@ -381,21 +426,147 @@ tutor local run -e EDULAGE_OIDC_SECRET=… -e EDULAGE_SERVICE_CLIENT_SECRET=… 
 SPIKE_TEST_PASSWORD=… python scripts/spike/tenant_checks.py                      # 24 checks
 SPIKE_TEST_PASSWORD=… EDULAGE_SERVICE_CLIENT_SECRET=… python scripts/spike/admission_checks.py   # 21 checks
 SPIKE_TEST_PASSWORD=… python scripts/spike/sso_login.py unia.admin                 # identity, roles, logout
+SPIKE_SSH="ssh <admin-user>@…" SPIKE_TEST_PASSWORD=… EDULAGE_SERVICE_CLIENT_SECRET=… python scripts/spike/hardening_checks.py  # §14
 scripts/spike/kc_set_roles.sh unib.instructor learner                            # revocation (on server)
 ```
 
 Test identities (IdP realm `edulage`, password set by `set-test-passwords.sh`): `ada.learner`,
 `sam.suspended`, `unia.admin`, `unia.programme`, `unia.author`, `unib.admin`, `unib.instructor`,
-`unib.ta`, `unib.trainer`, `oec.support`, `edu.admin`. Courses: `course-v1:UNIA+CS101+2026`,
-`course-v1:UNIB+MGT101+2026`. Tenant hosts: `unia.learn.edulage.org`, `unib.learn.edulage.org`.
+`unib.ta`, `unib.trainer`, `oec.support`, `edu.admin`, plus the hardening fixtures `bola.pending`,
+`uv.learner`, `dupe.learner`. Courses: `course-v1:UNIA+CS101+2026`, `course-v1:UNIB+MGT101+2026`.
+Tenant hosts: `unia.learn.edulage.org`, `unib.learn.edulage.org`. Operational runbooks (server
+access, secret rotation, backup/restore, incident steps) live only in this private infrastructure
+repository and are never copied into the public EduLage repository.
 
 ## 13. Decisions for review
 
-1. Adopt shared tenancy + eox-tenant for the pilot; dedicated instances as a paid/regulatory tier.
-2. EduLage builds its own OIDC identity service (claims contract in §2.2) — replaces Keycloak.
-3. Programme scope is implemented by EduLage pushing per-run claims, not by an Open edX construct.
+1. Adopt shared tenancy + eox-tenant for the pilot (pilot-validated; scale claims after §14.11 load
+   tests); dedicated instances as a paid/regulatory tier.
+2. Production identity is a mature OIDC provider (PostgreSQL-backed Keycloak or managed equivalent)
+   issuing the compact claims contract in §2.2 — EduLage does not build its own issuer.
+3. Programme scope is implemented by EduLage pushing per-run roles through the audited roles API,
+   not by token claims and not by an Open edX construct.
 4. Institutions never call Open edX directly; all writes go through EduLage's control plane.
 5. Analytics for institutions come from EduLage (events → warehouse), not from shared Open edX
    dashboards.
 6. Proceed to the theme phase on this architecture: tenant hosts carry institution branding; MFE
    header/account controls point at edulage.org.
+
+## 14. Controlled hardening (team review items 1–10) and production acceptance requirements
+
+Each item below is implemented in this repository and exercised by `scripts/spike/hardening_checks.py`
+on the pilot, unless marked *acceptance requirement* (must be true before the first real institution
+is onboarded; verified operationally, not by code).
+
+### 14.1 Identity provider
+- **Decision:** mature OIDC provider (PostgreSQL-backed Keycloak, `infra/keycloak/`, or a managed
+  equivalent); EduLage does not implement its own issuer. The Next.js app is an OIDC client of it.
+- Realm policy: brute-force protection, 300 s access tokens, refresh-token revocation, 30 min SSO idle
+  / 10 h max, external SSL required, TOTP policy defined.
+- *Acceptance:* conditional OTP **enforced** for every `edulage_admin`, `institution_admin:*`,
+  `programme_admin:*`, `oec_support:*` identity; signing-key rotation rehearsed (JWKS, Open edX keeps
+  validating); realm admin console reachable only from the administration allow-list.
+
+### 14.2 Admission before first login
+- `Admission` is keyed by the immutable OIDC `sub` (`edulage_sub`, `user` nullable); unique per
+  `(edulage_sub, course_key)`.
+- `POST /admissions/ {sub}` → **200** when the learner already has an LMS account (enrolment synced),
+  **202 pending** otherwise; the first SSO attaches the pending rows and enrols (`apply_pending_admissions`),
+  audited as `admission_applied`. Idempotent; `withdraw`/`defer` deactivate the enrolment; the direct
+  enrolment bypass remains blocked.
+
+### 14.3 Account linking
+- A pre-existing LMS account is linked only when the token carries `email_verified=true` **and**
+  exactly one active LMS account matches the email case-insensitively **and** that account is not
+  already bound to another EduLage `sub`. Otherwise the login is refused (`link_refused` audit row
+  with the reason) — never silently merged. Manual recovery: EduLage admin links the
+  `UserSocialAuth` in Django admin (`IdentityAudit` shows the refusal).
+
+### 14.4 Immediate suspension
+- `POST /users/status/ {sub, active:false}`: `is_active=False`, `UserStanding=disabled`, password
+  rotated, OAuth access/refresh tokens deleted, all EduLage-managed roles and support scopes revoked,
+  `suspended` audit row — in one transaction; a failure of any step fails the call so EduLage retries.
+- `AccountStatusMiddleware` refuses *existing* sessions on the next request (Django session flushed,
+  JWT cookies cleared → 403), without waiting for the next login; staff sessions are clamped to
+  `EDULAGE_STAFF_SESSION_SECONDS` (3600) while learners keep the platform default.
+- Enrolments are preserved; `active:true` restores the account and `sync_edulage_identity` re-applies
+  roles at the next login.
+
+### 14.5 OEC support scope
+- `SupportStaffRole` is no longer granted. `oec_support:<ORG>[:<run>]` creates `SupportScope` rows;
+  `GET /support/learners/` returns a minimal summary (username, in-scope enrolments/admissions) only
+  for learners with an enrolment inside the officer's scope. No grades, discipline, finance, or
+  other institutions' learners; each lookup is audited (`support_lookup`).
+
+### 14.6 Compact claims and roles API
+- Tokens carry global/institution roles only. `PUT /roles/` reconciles per-run roles from EduLage;
+  API-sourced and token-sourced grants are tracked separately (`ManagedRole.source`) and each source
+  revokes only its own grants. `edulage_admin` cannot be granted through the API.
+
+### 14.7 Credential ownership
+- The institution awards and issues the qualification or credential. EduLage records, verifies and
+  makes the credential independently verifiable (§6). Open edX certificates are evidence, not the award.
+
+### 14.8 Scale claims
+- Shared tenancy is **pilot-validated** (two institutions, functional isolation). Capacity statements
+  require the load tests in §14.11.
+
+### 14.9 Compatibility matrix (pinned on the pilot; re-verify on every upgrade)
+
+| Component | Version / source | Notes |
+|---|---|---|
+| Open edX named release | **Verawood** (`release/verawood.1`) | Tutor 22 series |
+| edx-platform | `openedx/edx-platform` @ `9e67d14` (release/verawood.1) | inside `overhangio/openedx:22.0.2-indigo` |
+| Tutor | 22.0.2 | `tutor-mfe` 22.0.0, `tutor-indigo` 22.0.0 |
+| LMS/Studio image | `docker.io/overhangio/openedx:22.0.2-indigo` | Python 3.12.13, Django 5.2.13 |
+| MFE image | `docker.io/overhangio/openedx-mfe:22.0.0-indigo` | built with Node 24.14.1; MFEs: account, admin-console, authn, authoring, communications, discussions, gradebook, learner-dashboard, learning, ora-grading, profile, site (catalog built but not the entry point) — all `release/verawood.1` |
+| eox-tenant | 14.4.0 | `OPENEDX_EXTRA_PIP_REQUIREMENTS`; third-party (eduNEXT) |
+| openedx-filters | 3.4.1 | `CourseEnrollmentStarted` filter |
+| openedx-events | 11.2.0 | webhooks (§7.2, next phase) |
+| social-auth-core | 4.9.0 | OIDC backend + pipeline hooks |
+| edx-drf-extensions | 10.6.0 | JWT auth on the integration API |
+| platform-plugin-edulage | 0.1.0 (this repo) | migrations `0001`, `0002_hardening` |
+| Keycloak | 26.4 (`quay.io/keycloak/keycloak`) | PostgreSQL 16.6 |
+| Infrastructure | MySQL 8.4.11, MongoDB 7.0.39, Redis 7.4.10, Meilisearch 1.36.0, Caddy 2.11.4, Docker 29.8.0, Ubuntu 24.04.4 LTS | DigitalOcean `s-4vcpu-8gb`, fra1, weekly backups |
+
+### 14.10 Operational hardening (runbook in this private repository)
+Applied on the pilot host (`scripts/harden.sh`, idempotent, one run per administrator):
+- SSH key-only, root login disabled, password/keyboard-interactive auth off, `MaxAuthTries 3`;
+  one named administrative user per operator (sudo + docker group; no shared accounts) — currently
+  a single named operator account; Fail2ban `sshd` jail; UFW default-deny with 80/443 public.
+- Secrets rotated (`scripts/rotate_secrets.sh`): OIDC client secret regenerated in Keycloak and
+  written to a new `OAuth2ProviderConfig` row (never leaves the server); `edulage-control-plane`
+  client secret replaced (old value verified rejected, 401). Keycloak admin/DB passwords were
+  generated fresh at the Postgres migration.
+- Spike identities disabled (`scripts/spike/kc_disable_test_users.sh`; SSO for `ada.learner` now
+  refused). Re-enable with `... enable` only for a test window, disable again afterwards.
+
+Still required before real users (*acceptance requirements*):
+- SSH restricted to the administration allow-list (`ADMIN_CIDRS=` when re-running `harden.sh`) once
+  the team's egress addresses are known; one named account per team administrator.
+- Django admin, Keycloak admin console and `/support/` reachable only through the administration
+  allow-list / identity-aware proxy (Caddy `remote_ip` matcher or a VPN).
+- Rotate the remaining Tutor-generated credentials (MySQL/Mongo/Redis, `SECRET_KEY`, JWT keys) via
+  `tutor config save` + relaunch during a maintenance window; the admissions/roles/status endpoints
+  stay restricted to the named service user in `edulage_integration`.
+- Backups: DigitalOcean weekly snapshots plus daily `tutor local do backup`-style dumps to Spaces;
+  restore rehearsed once before pilot.
+
+### 14.11 Load testing before any scale claim (*acceptance requirement*)
+- Scripted mixed workload (SSO login, dashboard, courseware, assessments, admissions API) at target
+  pilot concurrency; record p95 latency and error rate per tenant host; confirm no cross-tenant
+  leakage under load; decide managed MySQL/Redis and DOKS thresholds from the results.
+
+### 14.12 Production acceptance checklist
+1. Mature OIDC provider on persistent storage; MFA enforced for staff/admin roles; key rotation
+   rehearsed (§14.1).
+2. Admissions keyed by `sub`; 202-pending path verified end-to-end from edulage.org (§14.2).
+3. Linking refusals visible to EduLage admins; recovery procedure documented (§14.3).
+4. Suspension propagates within one request; reconciliation job for failed revocations (§14.4).
+5. OEC support scoped; no `SupportStaffRole` grants exist (§14.5).
+6. Roles API wired from EduLage; token claims remain compact (§14.6).
+7. Credential wording in all user-facing text follows §14.7.
+8. No capacity figure published before §14.11 results.
+9. Compatibility matrix (§14.9) re-verified after each Tutor/Open edX upgrade.
+10. Server hardening (§14.10): host baseline, secret rotation and identity disabling done; SSH/admin
+    allow-list, remaining Tutor credential rotation and backup rehearsal outstanding.
