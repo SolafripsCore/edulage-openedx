@@ -254,3 +254,32 @@ def _supersede_indigo_mfe_styling() -> None:
 
     # Indigo registers PARAGON_THEME_URLS as a config default; ours must win.
     hooks.Filters.CONFIG_DEFAULTS.add_item(("PARAGON_THEME_URLS", PARAGON_THEME_URLS))
+
+
+########################################
+# Build fix: Debian bullseye is EOL
+########################################
+# The upstream MFE image is based on node:20-bullseye-slim, whose live mirrors no longer serve
+# the bullseye-security pool, so the `apt install` in the base stage fails. Pin apt to the
+# snapshot.debian.org sources that the image itself ships (commented out) before that install.
+# Remove once tutor-mfe moves off bullseye.
+BULLSEYE_APT_RUN = "RUN apt update \\\n"
+BULLSEYE_APT_FIX = (
+    "RUN sed -i -e 's|^# deb http://snapshot|deb http://snapshot|' -e '/deb.debian.org/d' /etc/apt/sources.list \\\n"
+    "  && echo 'Acquire::Check-Valid-Until false;' > /etc/apt/apt.conf.d/99snapshot \\\n"
+    "  && apt update \\\n"
+)
+
+
+@hooks.Actions.ENV_SAVED.add()
+def _pin_bullseye_apt_sources(root_env: str, _config: dict[str, object]) -> None:
+    path = os.path.join(root_env, "plugins", "mfe", "build", "mfe", "Dockerfile")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    if "bullseye" not in content or BULLSEYE_APT_FIX in content:
+        return
+    content = content.replace(BULLSEYE_APT_RUN, BULLSEYE_APT_FIX, 1)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
