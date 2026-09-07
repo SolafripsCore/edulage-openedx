@@ -8,7 +8,7 @@ everything EduLage-specific so the environment can be rebuilt from scratch:
 - `config.public.yml` — non-secret Tutor settings (hosts, platform name, plugins).
 - `scripts/bootstrap.sh` — provisions a fresh Ubuntu 24.04 host (Docker, firewall, swap, Tutor).
 - `scripts/deploy.sh` — applies config and launches/updates the platform.
-- `plugins/` — Tutor plugins for EduLage (branding, settings, integrations). *(to come)*
+- `plugins/` — Tutor plugins for EduLage (branding, settings, integrations).
 - `theme/` — EduLage comprehensive theme / brand package. *(to come)*
 
 Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
