@@ -1,0 +1,26 @@
+# Stand-in EduLage identity provider for the SSO spike. realm-edulage.json ships test users
+# without passwords: run set-test-passwords.sh after the first start. Runs beside Tutor on the same
+# docker network so Tutor's Caddy can proxy https://auth.edulage.org to it (see
+# plugins/edulage.yml, patch `caddyfile`). Production: managed Keycloak / an IdP owned
+# by the EduLage control plane with a real database, not dev-file storage.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    container_name: edulage-keycloak
+    command: ["start", "--import-realm", "--http-enabled=true", "--proxy-headers=xforwarded", "--hostname=https://auth.edulage.org"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set in .env}
+      KC_DB: dev-file
+      JAVA_OPTS_KC_HEAP: "-Xms128m -Xmx512m"
+    volumes:
+      - ./realm-edulage.json:/opt/keycloak/data/import/realm-edulage.json:ro
+      - keycloak-data:/opt/keycloak/data/h2
+    restart: unless-stopped
+    networks: [tutor]
+volumes:
+  keycloak-data:
+networks:
+  tutor:
+    external: true
+    name: tutor_local_default

@@ -8,7 +8,13 @@ everything EduLage-specific so the environment can be rebuilt from scratch:
 - `config.public.yml` — non-secret Tutor settings (hosts, platform name, plugins).
 - `scripts/bootstrap.sh` — provisions a fresh Ubuntu 24.04 host (Docker, firewall, swap, Tutor).
 - `scripts/deploy.sh` — applies config and launches/updates the platform.
-- `plugins/` — Tutor plugins for EduLage (branding, settings, integrations).
+- `plugins/` — Tutor plugins for EduLage (branding, settings, tenant hosts, IdP proxy).
+- `platform-plugin-edulage/` — Django plugin: EduLage OIDC backend, role-claim sync,
+  admission-gated enrolment filter, admissions integration API.
+- `infra/keycloak/` — stand-in EduLage identity provider used by the SSO spike.
+- `scripts/spike/` — seed scripts and runtime test suites (tenant isolation, admissions, SSO).
+- `docs/spike-multitenancy-sso.md` — spike report: architecture, SSO, roles, isolation findings,
+  data mapping, API/events, security, limitations, production plan, estimate.
 - `theme/` — EduLage comprehensive theme / brand package. *(to come)*
 
 Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
@@ -24,7 +30,7 @@ Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
 
 ```bash
 ssh root@<host>
-su - tutor
+su - tutor                         # Tutor is pip-installed in ~/venv (needed for Python plugins)
 tutor local status                 # containers
 tutor local logs -f lms            # logs
 tutor local do createuser --staff --superuser <user> <email>

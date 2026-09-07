@@ -3,6 +3,11 @@ version: 0.1.0
 config:
   defaults:
     ALLOW_PUBLIC_REGISTRATION: true
+    # Institution tenant hosts served by the shared LMS (eox-tenant routes them to tenant configs).
+    TENANT_HOSTS:
+      - unia.learn.edulage.org
+      - unib.learn.edulage.org
+    AUTH_HOST: auth.edulage.org
 patches:
   openedx-common-settings: |
     # EduLage branding (runtime; images served from /media/brand on the LMS)
@@ -51,12 +56,28 @@ patches:
     FEATURES["ENABLE_MKTG_SITE"] = True
     ENABLE_MKTG_SITE = True
     MKTG_URLS["COURSES"] = "/programmes"
+    ALLOWED_HOSTS += {{ EDULAGE_TENANT_HOSTS }}
+    CSRF_TRUSTED_ORIGINS += ["https://" + h for h in {{ EDULAGE_TENANT_HOSTS }}]
+    # eox-tenant (installed via OPENEDX_EXTRA_PIP_REQUIREMENTS, self-registers as a Django plugin).
+    # Tenant hosts/orgs are data (Django admin → eox_tenant → Routes/Tenant configs).
+    EDNX_USE_SIGNAL = True
+    EOX_TENANT_APPEND_LMS_MIDDLEWARE_CLASSES = True
   # Indigo hard-codes its logo paths in the LMS/Studio/MFE header; serve EduLage assets there.
   caddyfile-lms: |
     @edulage_logo path /static/indigo/images/logo.png /static/indigo/images/logo-white.png /static/indigo/images/openedx-logo.png
     rewrite @edulage_logo /media/brand/edulage-logo.png
     @edulage_favicon path /theming/asset/images/favicon.ico /static/indigo/images/favicon.ico
     rewrite @edulage_favicon /media/brand/edulage-icon.png
+  caddyfile: |
+    {{ EDULAGE_TENANT_HOSTS|join(", ") }} {
+        import proxy "lms:8000"
+        @edulage_logo path /static/indigo/images/logo.png /static/indigo/images/logo-white.png
+        rewrite @edulage_logo /media/brand/edulage-logo.png
+    }
+    # Stand-in EduLage identity provider (infra/keycloak) for the SSO spike.
+    {{ EDULAGE_AUTH_HOST }} {
+        import proxy "edulage-keycloak:8080"
+    }
   caddyfile-cms: |
     @edulage_studio_logo path /static/indigo/images/studio-logo.png
     rewrite @edulage_studio_logo /media/brand/edulage-logo.png

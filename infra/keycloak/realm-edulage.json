@@ -1,0 +1,236 @@
+{
+  "realm": "edulage",
+  "enabled": true,
+  "displayName": "EduLage",
+  "registrationAllowed": false,
+  "loginTheme": "keycloak",
+  "clients": [
+    {
+      "clientId": "openedx",
+      "name": "Open edX (learn/studio)",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "https://learn.edulage.org/*",
+        "https://unia.learn.edulage.org/*",
+        "https://unib.learn.edulage.org/*"
+      ],
+      "webOrigins": [
+        "https://learn.edulage.org"
+      ],
+      "frontchannelLogout": true,
+      "attributes": {
+        "post.logout.redirect.uris": "https://learn.edulage.org/*##https://edulage.org/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "edulage_roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "edulage_roles",
+            "claim.name": "edulage_roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "edulage_status",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "edulage_status",
+            "claim.name": "edulage_status",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ada.learner",
+      "email": "ada.learner@example.org",
+      "firstName": "Ada",
+      "lastName": "Learner",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "learner"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unia.admin",
+      "email": "admin@unia.example.org",
+      "firstName": "Uche",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "institution_admin:UNIA"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unia.author",
+      "email": "author@unia.example.org",
+      "firstName": "Amara",
+      "lastName": "Author",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "course_author:UNIA"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unib.admin",
+      "email": "admin@unib.example.org",
+      "firstName": "Bola",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "institution_admin:UNIB"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unib.instructor",
+      "email": "instructor@unib.example.org",
+      "firstName": "Ife",
+      "lastName": "Instructor",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "instructor:course-v1:UNIB+MGT101+2026"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unib.ta",
+      "email": "ta@unib.example.org",
+      "firstName": "Tunde",
+      "lastName": "Assistant",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "teaching_assistant:course-v1:UNIB+MGT101+2026"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "oec.support",
+      "email": "support@oec.example.org",
+      "firstName": "Ola",
+      "lastName": "Support",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "oec_support"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "sam.suspended",
+      "email": "sam.suspended@example.org",
+      "firstName": "Sam",
+      "lastName": "Suspended",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "learner"
+        ],
+        "edulage_status": [
+          "suspended"
+        ]
+      }
+    },
+    {
+      "username": "edu.admin",
+      "email": "platform-admin@edulage.org",
+      "firstName": "Ede",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "edulage_admin"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unia.programme",
+      "email": "programme@unia.example.org",
+      "firstName": "Pat",
+      "lastName": "Programme",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "programme_admin:UNIA"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    },
+    {
+      "username": "unib.trainer",
+      "email": "trainer@unib.example.org",
+      "firstName": "Tolu",
+      "lastName": "Trainer",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "edulage_roles": [
+          "trainer:UNIB"
+        ],
+        "edulage_status": [
+          "active"
+        ]
+      }
+    }
+  ]
+}
