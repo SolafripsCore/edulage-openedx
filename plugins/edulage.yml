@@ -1,0 +1,62 @@
+name: edulage
+version: 0.1.0
+config:
+  defaults:
+    ALLOW_PUBLIC_REGISTRATION: true
+patches:
+  openedx-common-settings: |
+    # EduLage branding (runtime; images served from /media/brand on the LMS)
+    PLATFORM_NAME = "EduLage"
+    PLATFORM_DESCRIPTION = "EduLage — The Global Education Village"
+    LOGO_URL = "https://{{ LMS_HOST }}/media/brand/edulage-logo.png"
+    LOGO_URL_PNG = LOGO_URL
+    LOGO_TRADEMARK_URL = LOGO_URL
+    FAVICON_URL = "https://{{ LMS_HOST }}/media/brand/edulage-icon.png"
+    logo_image_url = LOGO_URL
+    MKTG_URLS = {
+        "ROOT": "https://edulage.org",
+        "ABOUT": "/about",
+        "CONTACT": "/contact",
+        "HELP_CENTER": "/help",
+        "PRIVACY": "/privacy",
+        "TOS": "/terms",
+        "TOS_AND_HONOR": "/terms",
+        "ACCESSIBILITY": "/accessibility",
+    }
+    # Learners are onboarded via institutional admissions on edulage.org, not open self-registration.
+    FEATURES["ALLOW_PUBLIC_ACCOUNT_CREATION"] = {{ EDULAGE_ALLOW_PUBLIC_REGISTRATION }}
+    STUDIO_NAME = "EduLage Studio"
+    STUDIO_SHORT_NAME = "EduLage Studio"
+  mfe-lms-common-settings: |
+    MFE_CONFIG["LOGO_URL"] = LOGO_URL
+    MFE_CONFIG["LOGO_WHITE_URL"] = LOGO_URL
+    MFE_CONFIG["LOGO_TRADEMARK_URL"] = LOGO_URL
+    MFE_CONFIG["FAVICON_URL"] = FAVICON_URL
+    MFE_CONFIG["SITE_NAME"] = "EduLage"
+    MFE_CONFIG["MARKETING_SITE_BASE_URL"] = "https://edulage.org"
+    MFE_CONFIG["SUPPORT_URL"] = "https://edulage.org/help"
+    MFE_CONFIG["PRIVACY_POLICY_URL"] = "https://edulage.org/privacy"
+    MFE_CONFIG["TERMS_OF_SERVICE_URL"] = "https://edulage.org/terms"
+    MFE_CONFIG["ACCESSIBILITY_URL"] = "https://edulage.org/accessibility"
+    MFE_CONFIG["CONTACT_URL"] = "https://edulage.org/contact"
+  openedx-lms-common-settings: |
+    SITE_NAME = "{{ LMS_HOST }}"
+  openedx-lms-production-settings: |
+    # Discovery happens on edulage.org; anonymous visitors to the LMS root go there.
+    ENABLE_CATALOG_MICROFRONTEND = False
+    FEATURES["ENABLE_MKTG_SITE"] = True
+    ENABLE_MKTG_SITE = True
+    MKTG_URLS["COURSES"] = "/programmes"
+  # Indigo hard-codes its logo paths in the LMS/Studio/MFE header; serve EduLage assets there.
+  caddyfile-lms: |
+    @edulage_logo path /static/indigo/images/logo.png /static/indigo/images/logo-white.png /static/indigo/images/openedx-logo.png
+    rewrite @edulage_logo /media/brand/edulage-logo.png
+    @edulage_favicon path /theming/asset/images/favicon.ico /static/indigo/images/favicon.ico
+    rewrite @edulage_favicon /media/brand/edulage-icon.png
+  caddyfile-cms: |
+    @edulage_studio_logo path /static/indigo/images/studio-logo.png
+    rewrite @edulage_studio_logo /media/brand/edulage-logo.png
+    @edulage_favicon path /favicon.ico /static/indigo/images/favicon.ico
+    rewrite @edulage_favicon /media/brand/edulage-icon.png
+  openedx-cms-common-settings: |
+    SITE_NAME = "{{ CMS_HOST }}"
