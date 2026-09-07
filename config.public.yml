@@ -1,0 +1,13 @@
+CMS_HOST: studio.edulage.org
+CONTACT_EMAIL: support@edulage.org
+DEFAULT_TZ: Africa/Lagos
+ENABLE_HTTPS: true
+ID: Mhrlm6LAIiBt3CXSPqvQh0ry
+LANGUAGE_CODE: en
+LMS_HOST: learn.edulage.org
+PLATFORM_NAME: EduLage
+PLUGINS:
+- mfe
+PLUGIN_INDEXES:
+- https://overhang.io/tutor/main
+- https://overhang.io/tutor/contrib
