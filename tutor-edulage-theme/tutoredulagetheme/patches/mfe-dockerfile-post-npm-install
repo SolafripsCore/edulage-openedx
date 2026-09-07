@@ -1,0 +1,3 @@
+# EduLage brand replaces @edx/brand so the tokens/fonts/logos are bundled at build time.
+COPY --from=edulage-brand /openedx/edx-brand.tgz /openedx/edx-brand.tgz
+RUN --mount=type=cache,target=/root/.npm,sharing=shared npm install --no-audit --no-fund --no-save /openedx/edx-brand.tgz

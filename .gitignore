@@ -3,3 +3,4 @@ config.yml
 *.env
 __pycache__/
 *.pyc
+tutor-edulage-theme/*.egg-info/

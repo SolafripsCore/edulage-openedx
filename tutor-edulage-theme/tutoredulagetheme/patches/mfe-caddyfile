@@ -1,0 +1,7 @@
+@edulage_brand path /brand /brand/*
+handle @edulage_brand {
+    root * /openedx/dist
+    header Cache-Control "public, max-age=31536000, immutable"
+    header Access-Control-Allow-Origin "*"
+    file_server
+}

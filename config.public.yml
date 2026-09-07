@@ -30,8 +30,10 @@ OPENEDX_EXTRA_PIP_REQUIREMENTS:
 - eox-tenant==14.4.0
 PLUGINS:
 - edulage
+- edulage-theme
 - indigo
 - mfe
 PLUGIN_INDEXES:
 - https://overhang.io/tutor/main
 - https://overhang.io/tutor/contrib
+MFE_DOCKER_IMAGE: edulage/openedx-mfe:22.0.0-edulage

@@ -1,0 +1,1 @@
+COPY --from=edulage-brand /openedx/edulage-brand/dist /openedx/dist/brand
