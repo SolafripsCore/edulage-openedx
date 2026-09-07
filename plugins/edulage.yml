@@ -39,6 +39,10 @@ patches:
     MFE_CONFIG["TERMS_OF_SERVICE_URL"] = "https://edulage.org/terms"
     MFE_CONFIG["ACCESSIBILITY_URL"] = "https://edulage.org/accessibility"
     MFE_CONFIG["CONTACT_URL"] = "https://edulage.org/contact"
+    MFE_CONFIG["SUPPORT_EMAIL"] = "{{ CONTACT_EMAIL }}"
+    MFE_CONFIG["INFO_EMAIL"] = "{{ CONTACT_EMAIL }}"
+    MFE_CONFIG["SEARCH_CATALOG_URL"] = "https://edulage.org/programmes"
+    MFE_CONFIG["ENABLE_ACCESSIBILITY_PAGE"] = "false"
   openedx-lms-common-settings: |
     SITE_NAME = "{{ LMS_HOST }}"
   openedx-lms-production-settings: |
