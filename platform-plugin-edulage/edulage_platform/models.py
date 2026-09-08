@@ -96,6 +96,7 @@ class IdentityAudit(models.Model):
         ("linked", "Existing account linked to EduLage identity"),
         ("created", "Account created for EduLage identity"),
         ("link_refused", "Account link refused"),
+        ("login_refused", "Sign-in refused (identity not active)"),
         ("admission_applied", "Pending admission applied at first login"),
         ("roles_synced", "Roles synchronised"),
         ("suspended", "Account suspended"),

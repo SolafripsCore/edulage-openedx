@@ -112,6 +112,11 @@ FRONTEND_BASE_THEME = {
     "variants": {"light": {"url": "{{ EDULAGE_THEME_BRAND_URL }}/light.min.css"}},
 }
 
+# Branded account-status pages rendered by platform-plugin-edulage load fonts/logo from here.
+hooks.Filters.ENV_PATCHES.add_item(
+    ("openedx-common-settings", "EDULAGE_BRAND_URL = '{{ EDULAGE_THEME_BRAND_URL }}'\n")
+)
+
 hooks.Filters.ENV_PATCHES.add_item(
     (
         "mfe-lms-common-settings",

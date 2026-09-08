@@ -10,8 +10,8 @@ class EdulagePlatformConfig(AppConfig):
         "url_config": {
             "lms.djangoapp": {
                 "namespace": "edulage",
-                "regex": r"^edulage/api/",
-                "relative_path": "api.urls",
+                "regex": r"^edulage/",
+                "relative_path": "urls",
             },
         },
         "settings_config": {

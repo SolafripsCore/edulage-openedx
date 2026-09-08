@@ -13,11 +13,12 @@ Claims expected from the EduLage IdP:
   edulage_status: "active" | "suspended"
 
 The issuer is validated by social-core against ``OIDC_ENDPOINT`` (ID token ``iss`` + JWKS).
-``edulage_status`` at login is a first line of defence only; suspension of a signed-in user is
-pushed by EduLage through ``POST /edulage/api/v1/users/status/`` (see identity.set_account_status).
+``edulage_status`` at login is a first line of defence only (enforced by the
+``pipeline.refuse_suspended_identity`` step, which shows the branded suspended page); suspension of
+a signed-in user is pushed by EduLage through ``POST /edulage/api/v1/users/status/``
+(see identity.set_account_status).
 """
 from social_core.backends.open_id_connect import OpenIdConnectAuth
-from social_core.exceptions import AuthForbidden
 
 
 class EdulageOpenIdConnect(OpenIdConnectAuth):
@@ -27,8 +28,3 @@ class EdulageOpenIdConnect(OpenIdConnectAuth):
 
     def oidc_endpoint(self):
         return self.setting("OIDC_ENDPOINT")
-
-    def get_user_details(self, response):
-        if response.get("edulage_status", "active") != "active":
-            raise AuthForbidden(self)
-        return super().get_user_details(response)

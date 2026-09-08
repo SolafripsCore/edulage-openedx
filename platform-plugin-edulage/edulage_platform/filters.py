@@ -7,6 +7,7 @@ from openedx_filters import PipelineStep
 from openedx_filters.learning.filters import CourseEnrollmentStarted
 
 from .models import Admission
+from .status import page_url
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +37,6 @@ class RequireAdmission(PipelineStep):
             return {}
         log.info("edulage: blocked enrolment of %s in %s (no admission)", user.username, course_key)
         raise CourseEnrollmentStarted.PreventEnrollment(
-            "Enrolment on EduLage requires an admission decision from the institution. "
-            "Apply at https://edulage.org/programmes."
+            "Enrolment on EduLage follows the institution's admission decision. "
+            f"See {settings.LMS_ROOT_URL}{page_url('pending')} or apply at https://edulage.org/programmes."
         )

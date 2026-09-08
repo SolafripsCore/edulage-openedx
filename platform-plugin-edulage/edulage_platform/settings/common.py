@@ -1,6 +1,7 @@
 ENROLLMENT_FILTER = "org.openedx.learning.course.enrollment.started.v1"
 ADMISSION_STEP = "edulage_platform.filters.RequireAdmission"
 OIDC_BACKEND = "edulage_platform.auth.EdulageOpenIdConnect"
+SUSPENDED_STEP = "edulage_platform.pipeline.refuse_suspended_identity"
 LINK_STEP = "edulage_platform.pipeline.link_verified_account"
 IDENTITY_SYNC_STEP = "edulage_platform.pipeline.sync_edulage_identity"
 LEGACY_ROLE_SYNC_STEP = "edulage_platform.pipeline.sync_edulage_roles"
@@ -39,6 +40,8 @@ def plugin_settings(settings):
     if OIDC_BACKEND not in backends:
         settings.AUTHENTICATION_BACKENDS = [OIDC_BACKEND] + backends
     pipeline = [s for s in settings.SOCIAL_AUTH_PIPELINE if s != LEGACY_ROLE_SYNC_STEP]
+    if SUSPENDED_STEP not in pipeline:
+        pipeline.insert(pipeline.index("social_core.pipeline.social_auth.social_uid") + 1, SUSPENDED_STEP)
     if LINK_STEP not in pipeline:
         pipeline.insert(pipeline.index("social_core.pipeline.social_auth.social_user") + 1, LINK_STEP)
     if IDENTITY_SYNC_STEP not in pipeline:

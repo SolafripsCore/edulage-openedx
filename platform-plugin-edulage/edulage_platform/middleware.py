@@ -17,6 +17,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseForbidden
 
+from .status import render_status
+
 log = logging.getLogger(__name__)
 User = get_user_model()
 
@@ -44,6 +46,13 @@ def _username_from_jwt_cookie(request):
     return data.get("preferred_username") or data.get("username")
 
 
+def _wants_html(request):
+    if request.path.startswith("/api/") or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return False
+    accept = request.headers.get("Accept", "")
+    return "text/html" in accept or "*/*" in accept or not accept
+
+
 class AccountStatusMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -66,7 +75,10 @@ class AccountStatusMiddleware:
             username = _username_from_jwt_cookie(request)
             if not username or User.objects.filter(username=username, is_active=True).exists():
                 return None
-        response = HttpResponseForbidden("Your account has been suspended.")
+        if _wants_html(request):
+            response = render_status(request, "suspended")
+        else:
+            response = HttpResponseForbidden("Your account has been suspended.")
         for name in _jwt_cookie_names():
             response.delete_cookie(name, domain=settings.SESSION_COOKIE_DOMAIN or None)
         return response
