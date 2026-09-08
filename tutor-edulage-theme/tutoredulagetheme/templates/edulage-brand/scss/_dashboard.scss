@@ -1,0 +1,125 @@
+// Learner dashboard ("My Learning") slot components and Paragon-page overrides.
+@use "tokens" as t;
+
+.el-eyebrow {
+  margin: 0 0 0.75rem;
+  font-family: t.$font-sans;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: t.$teal-600;
+}
+
+.el-empty {
+  padding: 3rem 2rem;
+  text-align: left;
+  background: t.$white;
+  border: 1px solid t.$line;
+  border-radius: t.$radius-2xl;
+
+  &__title {
+    margin: 0;
+    font-family: t.$font-heading;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: t.$navy-800;
+  }
+
+  &__text {
+    max-width: 40rem;
+    margin: 1rem 0 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: t.$ink-600;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+  }
+}
+
+.el-side {
+  padding: 1.5rem;
+  background: t.$surface;
+  border: 1px solid t.$line;
+  border-radius: t.$radius-2xl;
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    padding: 1rem 0;
+    border-top: 1px solid t.$line;
+
+    &:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    &:last-child {
+      padding-bottom: 0;
+    }
+  }
+
+  &__link {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: t.$navy-800;
+    text-decoration: none;
+
+    &:hover {
+      color: t.$teal-600;
+      text-decoration: none;
+    }
+  }
+
+  &__text {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: t.$ink-600;
+  }
+}
+
+// learner-dashboard page: heading + course cards
+#dashboard-container,
+.learner-dashboard {
+  h1,
+  h2 {
+    font-family: t.$font-heading;
+    letter-spacing: -0.02em;
+    color: t.$navy-800;
+  }
+}
+
+.course-card {
+  border: 1px solid t.$line !important;
+  border-radius: t.$radius-xl !important;
+  box-shadow: none !important;
+  transition: border-color t.$ease, box-shadow t.$ease;
+
+  &:hover {
+    border-color: t.$teal-400 !important;
+    box-shadow: t.$shadow-card !important;
+  }
+}
+
+// Open edX calls everything a "course"; EduLage frames the list as My learning.
+.course-list-title {
+  font-size: 0;
+  line-height: 0;
+
+  &::before {
+    content: "My learning";
+    font-size: 1.75rem;
+    line-height: 1.12;
+  }
+}

@@ -200,6 +200,17 @@ PLUGIN_SLOTS.add_item(
     ("authoring", STUDIO_FOOTER_SLOT, HIDE_DEFAULT + _insert("edulage_footer", "EdulageStudioFooter"))
 )
 
+# Learner dashboard as "My Learning": EduLage empty state and sidebar instead of the stock
+# "Looking for a new challenge?" course-discovery widgets (discovery lives on edulage.org).
+NO_COURSES_SLOT = "org.openedx.frontend.learner_dashboard.no_courses_view.v1"
+WIDGET_SIDEBAR_SLOT = "org.openedx.frontend.learner_dashboard.widget_sidebar.v1"
+PLUGIN_SLOTS.add_item(
+    ("learner-dashboard", NO_COURSES_SLOT, HIDE_DEFAULT + _insert("edulage_no_courses", "EdulageNoCoursesView"))
+)
+PLUGIN_SLOTS.add_item(
+    ("learner-dashboard", WIDGET_SIDEBAR_SLOT, HIDE_DEFAULT + _insert("edulage_sidebar", "EdulageDashboardSidebar"))
+)
+
 # frontend-base applications (instructor-dashboard, notifications, ...) render the shell's
 # header/footer; the compat shim maps these legacy slot ids onto the shell sub-slots.
 for _slot in HEADER_SLOTS:

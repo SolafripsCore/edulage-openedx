@@ -3,6 +3,8 @@
 @use "tokens" as t;
 @use "fonts";
 @use "chrome";
+@use "authn";
+@use "dashboard";
 
 // ---------------------------------------------------------------------------
 // Paragon non-color tokens: typography, radii, spacing, buttons, forms

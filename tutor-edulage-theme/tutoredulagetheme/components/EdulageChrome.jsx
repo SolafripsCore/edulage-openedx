@@ -450,3 +450,50 @@ const EdulageStudioFooter = () => {
     </footer>
   );
 };
+
+/**
+ * Learner dashboard — "My Learning" empty state (no_courses_view slot).
+ * Discovery stays on edulage.org; the LMS only points back to it.
+ */
+const EdulageNoCoursesView = () => {
+  const c = elConfig();
+  return (
+    <section className="el-empty" aria-labelledby="el-empty-title">
+      <p className="el-eyebrow">My learning</p>
+      <h2 id="el-empty-title" className="el-empty__title">You are not enrolled in any programme yet</h2>
+      <p className="el-empty__text">
+        Enrolled programmes and courses appear here once an institution has approved your
+        admission. Browse the EduLage catalogue to find accredited programmes from
+        participating tertiary institutions.
+      </p>
+      <div className="el-empty__actions">
+        <ElButton href={`${c.site}/programmes`}>Explore programmes</ElButton>
+        <ElButton href={`${c.site}/help`} variant="secondary">Help &amp; support</ElButton>
+      </div>
+    </section>
+  );
+};
+
+/** Learner dashboard — right-hand sidebar (widget_sidebar slot). */
+const EdulageDashboardSidebar = () => {
+  const c = elConfig();
+  const items = [
+    ['Explore more programmes', `${c.site}/programmes`, 'Degrees, professional programmes and short courses from participating institutions.'],
+    ['Find an Open Education Center', `${c.site}/open-education-centers`, 'Local study support, supervised examinations and internet access.'],
+    ['Verify a credential', `${c.site}/verify`, 'Credentials are issued by institutions and recorded and verified by EduLage.'],
+    ['Learner support', c.support, 'Help with access, enrolment and your learning schedule.'],
+  ];
+  return (
+    <aside className="el-side" aria-label="EduLage services">
+      <p className="el-eyebrow">EduLage</p>
+      <ul className="el-side__list">
+        {items.map(([label, href, text]) => (
+          <li key={label} className="el-side__item">
+            <a href={href} className="el-side__link">{label} <span aria-hidden="true">→</span></a>
+            <p className="el-side__text">{text}</p>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+};
