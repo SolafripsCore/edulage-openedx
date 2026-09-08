@@ -1,7 +1,10 @@
 @edulage_brand path /brand /brand/*
 handle @edulage_brand {
     root * /openedx/dist
-    header Cache-Control "public, max-age=31536000, immutable"
+    @edulage_brand_css path *.css *.json
+    @edulage_brand_static not path *.css *.json
+    header @edulage_brand_css Cache-Control "public, max-age=300, must-revalidate"
+    header @edulage_brand_static Cache-Control "public, max-age=31536000, immutable"
     header Access-Control-Allow-Origin "*"
     file_server
 }

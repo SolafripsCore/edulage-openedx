@@ -112,14 +112,29 @@
   }
 }
 
+// Staff-only "View as" bar
+.masquerade-bar {
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  color: t.$ink-600;
+
+  .btn-primary,
+  .btn-brand {
+    min-height: 40px;
+  }
+}
+
 // Open edX calls everything a "course"; EduLage frames the list as My learning.
-.course-list-title {
-  font-size: 0;
-  line-height: 0;
+.course-list-heading-container h2.course-list-title {
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent;
 
   &::before {
     content: "My learning";
+    display: block;
     font-size: 1.75rem;
     line-height: 1.12;
+    color: t.$navy-800;
   }
 }
