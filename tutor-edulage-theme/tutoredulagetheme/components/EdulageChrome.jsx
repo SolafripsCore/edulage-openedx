@@ -596,6 +596,7 @@ const ElCourseCard = ({ item, listing, c }) => {
   const banner = lmsUrl(course.bannerImgSrc);
   const href = lmsUrl((started && run.resumeUrl) || run.homeUrl);
   const progressHref = lmsUrl(run.progressUrl);
+  const certificateHref = lmsUrl(certificate.certPreviewUrl || certificate.downloadUrls?.preview || certificate.downloadUrls?.download);
 
   let status = 'Not started';
   let statusTone = 'muted';
@@ -649,8 +650,8 @@ const ElCourseCard = ({ item, listing, c }) => {
           {href && hasAccess ? <ElButton href={href} compact>{actionLabel}</ElButton>
             : <ElButton compact disabled aria-disabled="true">{access.isTooEarly ? 'Opens soon' : 'Not available yet'}</ElButton>}
           {progressHref && started && <ElButton href={progressHref} variant="secondary" compact>Progress</ElButton>}
-          {certificate.isDownloadable && (certificate.downloadUrls?.preview || certificate.downloadUrls?.download) && (
-            <ElButton href={certificate.downloadUrls.preview || certificate.downloadUrls.download} variant="secondary" compact>View certificate</ElButton>
+          {certificate.isDownloadable && certificateHref && (
+            <ElButton href={certificateHref} variant="secondary" compact>View certificate</ElButton>
           )}
         </div>
       </div>

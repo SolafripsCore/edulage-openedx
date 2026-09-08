@@ -34,7 +34,8 @@
     .header { background: var(--white); border-bottom: 1px solid var(--line); }
     .header .container { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 16px; }
     .header img { height: 36px; width: auto; display: block; }
-    .header nav { display: flex; gap: 20px; font-size: 0.875rem; font-weight: 600; color: var(--ink-600); }
+    .header nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 20px; font-size: 0.875rem; font-weight: 600; color: var(--ink-600); }
+    .header nav a { white-space: nowrap; }
     .header nav a { text-decoration: none; }
     .header nav a:hover { color: var(--navy-800); }
 
@@ -116,13 +117,38 @@
       .cert-rule { margin-left: 24px; margin-right: 24px; }
       .cert-top { flex-direction: column; align-items: flex-start; }
       .cert-top .el { text-align: left; }
+      .header .container { height: auto; padding: 12px 0; flex-wrap: wrap; }
+      .header nav { gap: 6px 14px; font-size: 0.8125rem; }
+      .banner .container { flex-direction: column; align-items: flex-start; }
+      .verify-box .id { font-size: 0.8125rem; }
     }
     @media print {
       @page { size: A4 landscape; margin: 10mm; }
       body { background: var(--white); }
       .header, .banner, .about, .footer, .intro { display: none !important; }
       main { padding: 0; }
-      .certificate { box-shadow: none; border-color: #cbd5e1; break-inside: avoid; }
+      .container { width: 100%; }
+      .certificate { box-shadow: none; border-color: #cbd5e1; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; max-width: none; font-size: 0.85rem; }
+      .certificate::before { display: none; }
+      .cert-top { padding: 18px 36px 0; }
+      .cert-top .org img { max-height: 44px; }
+      .cert-top .el img { height: 24px; }
+      .cert-rule { margin: 14px 36px 0; height: 3px; }
+      .cert-body { padding: 18px 36px 12px; }
+      .cert-body .statement { margin-top: 14px; font-size: 0.85rem; }
+      .cert-body .recipient { font-size: 2rem; margin-top: 6px; }
+      .cert-body .achieved { margin-top: 10px; font-size: 0.85rem; line-height: 1.4; }
+      .cert-body .course { font-size: 1.25rem; margin-top: 8px; }
+      .cert-body .course small { margin-top: 4px; font-size: 0.75rem; }
+      .meta { margin-top: 12px; }
+      .meta span { padding: 3px 9px; font-size: 0.7rem; }
+      .signatories { padding: 0 36px; gap: 16px 40px; }
+      .signatory img { max-height: 40px; margin-bottom: 4px; }
+      .signatory .line { margin-bottom: 4px; }
+      .cert-foot { margin-top: 14px; padding: 14px 36px 18px; gap: 16px; grid-template-columns: 1.3fr 1fr; align-items: center; background: none; }
+      .cert-foot p { font-size: 0.75rem; line-height: 1.4; }
+      .verify-box { padding: 10px 14px; }
+      .verify-box .url { margin-top: 6px; font-size: 0.7rem; }
       .btn { display: none; }
     }
   </style>
