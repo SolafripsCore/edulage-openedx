@@ -158,6 +158,7 @@ const ElAccountMenu = ({ user, c, open, setOpen }) => {
               <span>{user.email}</span>
             </div>
             <a role="menuitem" href={c.dashboard}>My learning</a>
+            <a role="menuitem" href={c.site}>EduLage home</a>
             <a role="menuitem" href={`${c.profile}/u/${user.username}`}>Profile</a>
             <a role="menuitem" href={c.account}>Account settings</a>
             {isStaff && c.studio && <a role="menuitem" href={c.studio}>Studio</a>}
@@ -214,7 +215,7 @@ const EdulageHeader = ({ course }) => {
     setSearchOpen((v) => !v); setStudyOpen(false); setOpen(false); setUserOpen(false);
   }, []);
 
-  const homeHref = authenticatedUser ? c.dashboard : c.site;
+  const homeHref = c.site;
   const siteLink = (href) => `${c.site}${href}`;
 
   return (
@@ -334,6 +335,7 @@ const EdulageHeader = ({ course }) => {
               {authenticatedUser && (
                 <>
                   <a href={c.dashboard} className="el-drawer__primary">My learning</a>
+                  <a href={c.site} className="el-drawer__primary">EduLage home</a>
                   <a href={`${c.profile}/u/${authenticatedUser.username}`} className="el-drawer__primary">Profile</a>
                   <a href={c.account} className="el-drawer__primary">Account settings</a>
                 </>
@@ -445,6 +447,12 @@ const EdulageStudioFooter = () => {
   return (
     <footer className="el-footer el-footer--compact" role="contentinfo">
       <div className="el-container">
+        <nav className="el-footer__legal" aria-label="EduLage">
+          <a href={c.site}>EduLage home</a>
+          <a href={c.dashboard}>My learning</a>
+          <a href={`${c.site}/for-institutions`}>For institutions</a>
+          <a href={`${c.site}/help`}>Help & support</a>
+        </nav>
         <ElFooterLegal c={c} />
       </div>
     </footer>

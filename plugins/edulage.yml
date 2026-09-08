@@ -56,6 +56,8 @@ patches:
     FEATURES["ENABLE_MKTG_SITE"] = True
     ENABLE_MKTG_SITE = True
     MKTG_URLS["COURSES"] = "/programmes"
+    # edulage.org reads the learner session (GET /api/user/v1/me) to show "My learning" in its header.
+    CORS_ORIGIN_WHITELIST += ["https://edulage.org", "https://www.edulage.org"]
     ALLOWED_HOSTS += {{ EDULAGE_TENANT_HOSTS }}
     CSRF_TRUSTED_ORIGINS += ["https://" + h for h in {{ EDULAGE_TENANT_HOSTS }}]
     # eox-tenant (installed via OPENEDX_EXTRA_PIP_REQUIREMENTS, self-registers as a Django plugin).
