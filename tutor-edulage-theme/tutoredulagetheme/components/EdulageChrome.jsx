@@ -592,9 +592,10 @@ const ElCourseCard = ({ item, listing, c }) => {
   const institutionName = listing?.institution_name || item.courseProvider?.name || run.courseId?.split(':')[1]?.split('+')[0] || '';
   const institutionLogo = listing?.institution_logo || '';
   const classification = listing?.classification_label || 'Course';
-  const target = (started && run.resumeUrl) || run.homeUrl || '';
-  const href = target ? (target.startsWith('http') ? target : `${c.lms}${target}`) : null;
-  const progressHref = run.progressUrl ? (run.progressUrl.startsWith('http') ? run.progressUrl : `${c.lms}${run.progressUrl}`) : null;
+  const lmsUrl = (path) => (path ? (path.startsWith('http') ? path : `${c.lms}${path}`) : null);
+  const banner = lmsUrl(course.bannerImgSrc);
+  const href = lmsUrl((started && run.resumeUrl) || run.homeUrl);
+  const progressHref = lmsUrl(run.progressUrl);
 
   let status = 'Not started';
   let statusTone = 'muted';
@@ -609,8 +610,8 @@ const ElCourseCard = ({ item, listing, c }) => {
   return (
     <article className="el-course" aria-labelledby={`${item.cardId}-title`}>
       <div className="el-course__media">
-        {course.bannerImgSrc ? (
-          <img src={course.bannerImgSrc} alt="" loading="lazy" />
+        {banner ? (
+          <img src={banner} alt="" loading="lazy" />
         ) : <div className="el-course__media-fallback" aria-hidden="true" />}
         <span className="el-course__pill">{listing?.credential || classification}</span>
         {institutionLogo && (
