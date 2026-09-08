@@ -21,6 +21,12 @@ POST /edulage/api/v1/users/status/   {"sub": "...", "status": "suspended" | "act
 GET  /edulage/api/v1/support/learners/?username=...   (OEC support officer, session auth)
   Enrolment/progress summary for a learner, limited to the officer's SupportScope.
 
+PUT  /edulage/api/v1/listings/   {"listings": [{"course_id": "...", "institution": "ORG", "institution_name": "...",
+  "classification": "degree", "credential": "MSc", "programme_title": "...", ...}]}
+  Presentation metadata from the EduLage catalogue for course runs (upsert, idempotent).
+GET  /edulage/api/v1/dashboard/courses/   (learner, session auth)
+  Listing metadata for the caller's own enrolments, used by the "My learning" cards.
+
 POST/PUT are idempotent: repeating a call converges on the same state, so EduLage may retry on
 timeouts without side effects.
 """
@@ -38,7 +44,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .. import identity
-from ..models import Admission, IdentityAudit, ManagedRole, SupportScope
+from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
 
 User = get_user_model()
 
@@ -251,3 +257,73 @@ class SupportLearnerView(APIView):
             edulage_sub=identity.sub_for_user(learner) or "",
         )
         return Response({"username": learner.username, "enrolments": enrolments, "admissions": admissions})
+
+
+LISTING_FIELDS = (
+    "institution", "institution_name", "institution_logo", "institution_url", "programme_title", "programme_url",
+    "classification", "credential", "delivery_mode",
+)
+
+
+def _absolute_media_url(url):
+    return url if url.startswith("http") else f"{settings.LMS_ROOT_URL}{url}"
+
+
+def _serialize_listing(course_key, listing, org=None):
+    if listing is not None:
+        data = listing.as_dict()
+    else:
+        data = {f: "" for f in LISTING_FIELDS}
+        data.update(
+            institution=course_key.org,
+            institution_name=(org.name if org else course_key.org),
+            institution_logo=_absolute_media_url(org.logo.url) if org and org.logo else "",
+            classification="",
+            classification_label="Course",
+        )
+    data["course_id"] = str(course_key)
+    return data
+
+
+class ListingsView(IntegrationView):
+    def put(self, request):
+        items = request.data.get("listings")
+        if not isinstance(items, list):
+            return Response({"error": "listings must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        valid = {c for c, _ in CourseListing.CLASSIFICATIONS}
+        parsed = []
+        for item in items:
+            if not isinstance(item, dict):
+                return Response({"error": "each listing must be an object"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                course_key = CourseKey.from_string(item["course_id"])
+            except (KeyError, TypeError, InvalidKeyError):
+                return Response({"error": "course_id is required and must be valid"}, status=status.HTTP_400_BAD_REQUEST)
+            if item.get("classification", "short") not in valid:
+                return Response({"error": f"unknown classification for {course_key}"}, status=status.HTTP_400_BAD_REQUEST)
+            defaults = {f: item[f] for f in LISTING_FIELDS if f in item}
+            defaults.setdefault("institution", course_key.org)
+            defaults.setdefault("institution_name", course_key.org)
+            parsed.append((course_key, defaults))
+        result = []
+        with transaction.atomic():
+            for course_key, defaults in parsed:
+                listing, _ = CourseListing.objects.update_or_create(course_key=course_key, defaults=defaults)
+                result.append(_serialize_listing(course_key, listing))
+        return Response({"listings": result})
+
+
+class DashboardCoursesView(APIView):
+    """Listing metadata for the caller's own enrolments; anything else is not disclosed."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from common.djangoapps.student.models import CourseEnrollment  # pylint: disable=import-outside-toplevel
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        keys = [e.course_id for e in CourseEnrollment.enrollments_for_user(request.user)]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        return Response({"courses": [_serialize_listing(k, listings.get(k), orgs.get(k.org)) for k in keys]})

@@ -20,6 +20,8 @@ from organizations.models import Organization
 from social_django.models import UserSocialAuth
 from common.djangoapps.student.models import UserProfile
 from common.djangoapps.third_party_auth.models import OAuth2ProviderConfig
+from edulage_platform.models import CourseListing
+from opaque_keys.edx.keys import CourseKey
 
 INSTITUTIONS = {
     "UNIA": {"name": "University A (pilot)", "host": "unia.learn.edulage.org"},
@@ -150,3 +152,21 @@ if service_secret:
     )
     ApplicationAccess.objects.update_or_create(application=app, defaults={"scopes": ["user_id"]})
     print("service client", app.client_id, "user", svc.username)
+
+# EduLage catalogue metadata for the pilot runs (normally pushed by the control plane via
+# PUT /edulage/api/v1/listings/); drives institution / classification / programme on My learning cards.
+LISTINGS = {
+    "course-v1:UNIA+CS101+2026": {
+        "institution": "UNIA", "institution_name": "University A", "institution_url": "https://edulage.org/institutions/unia",
+        "programme_title": "BSc Computer Science", "programme_url": "https://edulage.org/programmes/unia-bsc-computer-science",
+        "classification": "degree", "credential": "BSc", "delivery_mode": "Fully online",
+    },
+    "course-v1:UNIB+MGT101+2026": {
+        "institution": "UNIB", "institution_name": "University B", "institution_url": "https://edulage.org/institutions/unib",
+        "programme_title": "Professional Certificate in Management", "programme_url": "https://edulage.org/programmes/unib-management",
+        "classification": "professional", "credential": "Professional Certificate", "delivery_mode": "Online + OEC exams",
+    },
+}
+for course_id, fields in LISTINGS.items():
+    CourseListing.objects.update_or_create(course_key=CourseKey.from_string(course_id), defaults=fields)
+print("listings", CourseListing.objects.count())

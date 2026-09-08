@@ -505,3 +505,187 @@ const EdulageDashboardSidebar = () => {
     </aside>
   );
 };
+
+/**
+ * Learner dashboard — "My Learning" course list (course_list slot).
+ * Replaces the stock Open edX course cards with EduLage cards: institution (name + logo),
+ * classification (degree / short course / CPD ...), programme, run dates, progress and a single
+ * "Continue learning" action. Classification and institution identity come from the EduLage
+ * catalogue (platform plugin, /edulage/api/v1/dashboard/courses/); progress from the course
+ * home API. Everything degrades gracefully: without listing data the card shows the Open edX
+ * organisation, without progress data the bar is hidden.
+ */
+const elFormatDate = (value) => {
+  if (!value) { return null; }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) { return null; }
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const elRunDates = (run) => {
+  const start = elFormatDate(run?.startDate);
+  const end = elFormatDate(run?.endDate);
+  if (start && end) { return `${start} – ${end}`; }
+  if (start) { return `Starts ${start}`; }
+  if (end) { return `Ends ${end}`; }
+  return run?.advertisedStart ? `Starts ${run.advertisedStart}` : 'Self-paced';
+};
+
+const useElListings = (courseIds) => {
+  const [listings, setListings] = useState({});
+  const key = courseIds.join('|');
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms || !courseIds.length) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/courses/`)
+      .then(({ data }) => {
+        if (!alive) { return; }
+        const byId = {};
+        (data?.courses || []).forEach((row) => { byId[row.course_id] = row; });
+        setListings(byId);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return listings;
+};
+
+const useElProgress = (courseId, enabled) => {
+  const [progress, setProgress] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!enabled || !c.lms || !courseId) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/api/course_home/progress/${courseId}`)
+      .then(({ data }) => {
+        if (!alive) { return; }
+        const s = data?.completion_summary || data?.completionSummary;
+        if (!s) { return; }
+        const complete = s.complete_count ?? s.completeCount ?? 0;
+        const incomplete = s.incomplete_count ?? s.incompleteCount ?? 0;
+        const locked = s.locked_count ?? s.lockedCount ?? 0;
+        const total = complete + incomplete + locked;
+        setProgress(total ? Math.round((complete / total) * 100) : null);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [courseId, enabled]);
+  return progress;
+};
+
+const ElCourseCard = ({ item, listing, c }) => {
+  const course = item.course || {};
+  const run = item.courseRun || {};
+  const enrollment = item.enrollment || {};
+  const access = enrollment.coursewareAccess || {};
+  const hasAccess = access.isStaff || !(access.hasUnmetPrereqs || access.isTooEarly);
+  const started = Boolean(enrollment.hasStarted);
+  const archived = Boolean(run.isArchived);
+  const passed = Boolean(item.gradeData?.isPassing);
+  const certificate = item.certificate || {};
+  const progress = useElProgress(run.courseId, started && !archived);
+  const progressStyle = { width: `${progress || 0}%` };
+
+  const institutionName = listing?.institution_name || item.courseProvider?.name || run.courseId?.split(':')[1]?.split('+')[0] || '';
+  const institutionLogo = listing?.institution_logo || '';
+  const classification = listing?.classification_label || 'Course';
+  const target = (started && run.resumeUrl) || run.homeUrl || '';
+  const href = target ? (target.startsWith('http') ? target : `${c.lms}${target}`) : null;
+  const progressHref = run.progressUrl ? (run.progressUrl.startsWith('http') ? run.progressUrl : `${c.lms}${run.progressUrl}`) : null;
+
+  let status = 'Not started';
+  let statusTone = 'muted';
+  if (archived) { status = passed ? 'Completed' : 'Ended'; statusTone = passed ? 'done' : 'muted'; }
+  else if (!run.isStarted) { status = 'Starts soon'; statusTone = 'upcoming'; }
+  else if (started) { status = 'In progress'; statusTone = 'active'; }
+
+  let actionLabel = 'Start learning';
+  if (archived) { actionLabel = 'Review course'; }
+  else if (started) { actionLabel = 'Continue learning'; }
+
+  return (
+    <article className="el-course" aria-labelledby={`${item.cardId}-title`}>
+      <div className="el-course__media">
+        {course.bannerImgSrc ? (
+          <img src={course.bannerImgSrc} alt="" loading="lazy" />
+        ) : <div className="el-course__media-fallback" aria-hidden="true" />}
+        <span className="el-course__pill">{listing?.credential || classification}</span>
+        {institutionLogo && (
+          <span className="el-course__logo"><img src={institutionLogo} alt="" /></span>
+        )}
+      </div>
+      <div className="el-course__body">
+        <div className="el-course__meta-row">
+          <p className="el-course__institution">
+            {listing?.institution_url ? <a href={listing.institution_url}>{institutionName}</a> : institutionName}
+          </p>
+          <span className={`el-course__status el-course__status--${statusTone}`}>{status}</span>
+        </div>
+        <h3 id={`${item.cardId}-title`} className="el-course__title">
+          {href && hasAccess ? <a href={href}>{course.courseName}</a> : course.courseName}
+        </h3>
+        {listing?.programme_title && (
+          <p className="el-course__programme">
+            Part of {listing.programme_url ? <a href={listing.programme_url}>{listing.programme_title}</a> : listing.programme_title}
+          </p>
+        )}
+        <ul className="el-course__facts">
+          <li>{classification}</li>
+          <li>{elRunDates(run)}</li>
+          {listing?.delivery_mode && <li>{listing.delivery_mode}</li>}
+          {course.courseNumber && <li>{course.courseNumber}</li>}
+        </ul>
+        {progress !== null && (
+          <div className="el-course__progress" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
+            <div className="el-course__progress-track"><span style={progressStyle} /></div>
+            <span className="el-course__progress-label">{progress}% complete</span>
+          </div>
+        )}
+        <div className="el-course__actions">
+          {href && hasAccess ? <ElButton href={href} compact>{actionLabel}</ElButton>
+            : <ElButton compact disabled aria-disabled="true">{access.isTooEarly ? 'Opens soon' : 'Not available yet'}</ElButton>}
+          {progressHref && started && <ElButton href={progressHref} variant="secondary" compact>Progress</ElButton>}
+          {certificate.isDownloadable && (certificate.downloadUrls?.preview || certificate.downloadUrls?.download) && (
+            <ElButton href={certificate.downloadUrls.preview || certificate.downloadUrls.download} variant="secondary" compact>View certificate</ElButton>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+};
+
+const EdulageCourseList = ({ courseListData }) => {
+  const c = elConfig();
+  const { visibleList = [], numPages = 1, setPageNumber } = courseListData || {};
+  const [page, setPage] = useState(1);
+  const ids = visibleList.map((i) => i.courseRun?.courseId).filter(Boolean);
+  const listings = useElListings(ids);
+  const goTo = (n) => { setPage(n); if (setPageNumber) { setPageNumber(n); } };
+  return (
+    <section className="el-courses" aria-label="My learning">
+      <div className="el-courses__list">
+        {visibleList.map((item) => (
+          <ElCourseCard key={item.cardId} item={item} listing={listings[item.courseRun?.courseId]} c={c} />
+        ))}
+      </div>
+      {numPages > 1 && (
+        <nav className="el-courses__pages" aria-label="Pages">
+          {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={`el-courses__page${n === page ? ' is-active' : ''}`}
+              aria-current={n === page ? 'page' : undefined}
+              onClick={() => goTo(n)}
+            >
+              {n}
+            </button>
+          ))}
+        </nav>
+      )}
+    </section>
+  );
+};

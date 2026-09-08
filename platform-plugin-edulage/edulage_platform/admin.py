@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Admission, IdentityAudit, ManagedRole, SupportScope
+from .models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
 
 
 @admin.register(Admission)
@@ -38,3 +38,10 @@ class IdentityAuditAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(CourseListing)
+class CourseListingAdmin(admin.ModelAdmin):
+    list_display = ("course_key", "institution", "institution_name", "classification", "credential", "programme_title", "modified")
+    list_filter = ("classification", "institution")
+    search_fields = ("course_key", "institution_name", "programme_title")

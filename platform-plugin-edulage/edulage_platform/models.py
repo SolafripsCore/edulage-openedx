@@ -114,3 +114,52 @@ class IdentityAudit(models.Model):
 
     class Meta:
         ordering = ["-created"]
+
+
+class CourseListing(models.Model):
+    """
+    EduLage-owned presentation metadata for one Open edX course run, pushed by the integration
+    layer from the authoritative programme catalogue. The learner dashboard uses it to show the
+    institution, classification and programme instead of Open edX's bare "org • course number".
+    Rows are optional: runs without one fall back to the Open edX organisation.
+    """
+
+    CLASSIFICATIONS = [
+        ("degree", "Degree programme"),
+        ("postgraduate", "Postgraduate programme"),
+        ("professional", "Professional programme"),
+        ("certificate", "Certificate course"),
+        ("short", "Short course"),
+        ("executive", "Executive education"),
+        ("open", "Open course"),
+        ("cpd", "Continuing professional development"),
+    ]
+
+    course_key = CourseKeyField(max_length=255, unique=True)
+    institution = models.CharField(max_length=64, help_text="EduLage institution slug / Open edX org short name")
+    institution_name = models.CharField(max_length=160)
+    institution_logo = models.URLField(blank=True)
+    institution_url = models.URLField(blank=True, help_text="Institution profile on edulage.org")
+    programme_title = models.CharField(max_length=200, blank=True, help_text="Parent programme, if the run is part of one")
+    programme_url = models.URLField(blank=True, help_text="Programme page on edulage.org")
+    classification = models.CharField(max_length=16, choices=CLASSIFICATIONS, default="short")
+    credential = models.CharField(max_length=64, blank=True, help_text="e.g. MSc, PGD, Certificate of completion")
+    delivery_mode = models.CharField(max_length=32, blank=True, help_text="e.g. Fully online, Online + OEC exams")
+    modified = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.course_key} ({self.institution})"
+
+    def as_dict(self):
+        return {
+            "institution": self.institution,
+            "institution_name": self.institution_name,
+            "institution_logo": self.institution_logo,
+            "institution_url": self.institution_url,
+            "programme_title": self.programme_title,
+            "programme_url": self.programme_url,
+            "classification": self.classification,
+            "classification_label": self.get_classification_display(),
+            "credential": self.credential,
+            "delivery_mode": self.delivery_mode,
+        }
