@@ -6,6 +6,7 @@ from opaque_keys.edx.django.models import CourseKeyField
 from openedx_filters import PipelineStep
 from openedx_filters.learning.filters import CourseEnrollmentStarted
 
+from .certificates import certificate_context, certificate_template
 from .models import Admission
 from .status import page_url
 
@@ -40,3 +41,17 @@ class RequireAdmission(PipelineStep):
             "Enrolment on EduLage follows the institution's admission decision. "
             f"See {settings.LMS_ROOT_URL}{page_url('pending')} or apply at https://edulage.org/programmes."
         )
+
+
+class EdulageCertificate(PipelineStep):
+    """
+    Render web certificates with the EduLage template: the institution awards and issues the
+    credential, EduLage records and verifies it. Course-level custom templates configured by
+    an institution in Open edX are left untouched.
+    """
+
+    def run_filter(self, context, custom_template):  # pylint: disable=arguments-differ
+        context.update(certificate_context(context))
+        if custom_template:
+            return {"context": context, "custom_template": custom_template}
+        return {"context": context, "custom_template": certificate_template()}

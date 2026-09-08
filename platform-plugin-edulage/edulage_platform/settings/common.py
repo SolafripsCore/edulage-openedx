@@ -1,5 +1,7 @@
 ENROLLMENT_FILTER = "org.openedx.learning.course.enrollment.started.v1"
 ADMISSION_STEP = "edulage_platform.filters.RequireAdmission"
+CERTIFICATE_FILTER = "org.openedx.learning.certificate.render.started.v1"
+CERTIFICATE_STEP = "edulage_platform.filters.EdulageCertificate"
 OIDC_BACKEND = "edulage_platform.auth.EdulageOpenIdConnect"
 SUSPENDED_STEP = "edulage_platform.pipeline.refuse_suspended_identity"
 LINK_STEP = "edulage_platform.pipeline.link_verified_account"
@@ -31,6 +33,11 @@ def plugin_settings(settings):
     )
     if ADMISSION_STEP not in entry["pipeline"]:
         entry["pipeline"].append(ADMISSION_STEP)
+    cert_entry = settings.OPEN_EDX_FILTERS_CONFIG.setdefault(
+        CERTIFICATE_FILTER, {"fail_silently": False, "pipeline": []}
+    )
+    if CERTIFICATE_STEP not in cert_entry["pipeline"]:
+        cert_entry["pipeline"].append(CERTIFICATE_STEP)
 
     # Studio authenticates against the LMS via OAuth2; the IdP backend lives in the LMS only.
     if settings.SERVICE_VARIANT != "lms" or not settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"):
