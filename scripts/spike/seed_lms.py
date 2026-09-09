@@ -56,6 +56,21 @@ for short_name, inst in INSTITUTIONS.items():
     org = Organization.objects.get(short_name=short_name)
     print(f"tenant {short_name}: https://{inst['host']} org_filter={tenant.get_organizations()} org_id={org.id}")
 
+# Platform host: learners arrive here from edulage.org, so My learning must list enrolments across
+# every institution. Without an explicit filter Open edX blacklists every org that is claimed by
+# some other tenant, which would empty the dashboard. Institution-scoped UIs stay on tenant hosts.
+platform, _ = TenantConfig.objects.update_or_create(
+    external_key="platform",
+    defaults={
+        "lms_configs": {"EDNX_USE_SIGNAL": True, "course_org_filter": sorted(INSTITUTIONS)},
+        "studio_configs": {},
+        "theming_configs": {},
+        "meta": {"edulage_institution": None},
+    },
+)
+Route.objects.update_or_create(domain=LMS_HOST, defaults={"config": platform})
+print(f"platform host {LMS_HOST} org_filter={platform.get_organizations()}")
+
 site = Site.objects.get(domain=LMS_HOST)
 secret = os.environ.get("EDULAGE_OIDC_SECRET", "")
 current = (

@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from opaque_keys.edx.keys import CourseKey
 from common.djangoapps.student.models import CourseEnrollment
 from lms.djangoapps.certificates.data import CertificateStatuses
-from lms.djangoapps.certificates.models import GeneratedCertificate
+from lms.djangoapps.certificates.models import CertificateAllowlist, GeneratedCertificate
 from edulage_platform.models import Admission
 
 PILOT_RUNS = {
@@ -32,6 +32,12 @@ for course_id, org in PILOT_RUNS.items():
         enrollment.update_enrollment(mode="honor", is_active=True)
     print("enrolled", learner.username, course_id, enrollment.mode)
 
+# Allowlisted so grade recalculation (staff previewing/answering checks) keeps the certificate
+# downloadable instead of flipping it to notpassing.
+CertificateAllowlist.objects.update_or_create(
+    user=learner, course_id=CourseKey.from_string(CERTIFIED_RUN),
+    defaults={"allowlist": True, "notes": "EduLage pilot demonstration certificate"},
+)
 cert, created = GeneratedCertificate.objects.get_or_create(
     user=learner, course_id=CourseKey.from_string(CERTIFIED_RUN),
     defaults={"status": CertificateStatuses.downloadable, "mode": "honor", "grade": "0.95",
