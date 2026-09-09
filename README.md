@@ -39,6 +39,20 @@ tutor local do importdemocourse    # demo course
 tutor config save --set KEY=VALUE && tutor local launch -I   # apply config change
 ```
 
+### Load testing
+
+`scripts/loadtest/` holds the k6 learner journey and the seeding script for throw-away learners
+(`loadtest-NN@example.invalid`, e-mails pre-marked as sent so nothing is delivered). Seed, run, tear down:
+
+```
+LOAD_PASSWORD=... LOAD_USERS=20 tutor local run lms ./manage.py lms shell < scripts/loadtest/seed_load_users.py
+LOAD_PASSWORD=... k6 run -e USERS=20 -e STAGES=30s:30,3m:30,15s:0 -e OUT=/tmp/k6 scripts/loadtest/learner_journey.js
+LOAD_TEARDOWN=1 tutor local run lms ./manage.py lms shell < scripts/loadtest/seed_load_users.py
+```
+
+Run k6 from more than one source IP above ~30 VUs, or the LMS per-IP login rate limiter skews the
+failure rate. Results and the published capacity figure: `docs/spike-multitenancy-sso.md` §14.11.
+
 ### Outgoing mail
 
 Transactional mail (LMS welcome/enrolment/certificate, Keycloak password/verification) goes out

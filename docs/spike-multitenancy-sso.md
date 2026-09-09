@@ -563,6 +563,30 @@ Still required before real users (*acceptance requirements*):
   pilot concurrency; record p95 latency and error rate per tenant host; confirm no cross-tenant
   leakage under load; decide managed MySQL/Redis and DOKS thresholds from the results.
 
+**Result (2026-09-09, pilot droplet: 4 vCPU / 8 GB, single host running LMS, CMS, workers, MySQL,
+Mongo, Redis, Meilisearch, Keycloak).** Tool: k6 (`scripts/loadtest/`), journey = login → My learning
+(dashboard API + learner-home init) → course outline → first unit (sequence metadata + xblock render) →
+progress → logout, 2–7 s think time between pages, 20 throw-away learners on the UNIA run.
+
+| Virtual users (continuously active) | p95 dashboard | p95 outline / unit | p95 login | host load (4 cores) | verdict |
+|---|---|---|---|---|---|
+| 30 | 0.5 s | 1.3 s / 1.1 s | 2.3 s | ~2.8, CPU ≈ 45 % idle | comfortable |
+| 50 | 2.2 s | 3.0 s / 2.9 s | 4.4 s | ~5.1, CPU ≈ 0 % idle | degraded but functional |
+| 60→100 ramp | 5.6 s | 6.0 s / 5.8 s | 10 s | 6.6, CPU saturated | not sustainable |
+
+Findings:
+- Tutor's default of **2 uWSGI workers** for the LMS was the first bottleneck (p50 7 s at only
+  30 users with CPU 45 % idle). `OPENEDX_LMS_UWSGI_WORKERS=6` is now set on the pilot (throughput
+  ×2, latencies at 30 users dropped ~10×). Beyond that the droplet is CPU-bound.
+- No 5xx errors under load. The only request failures were Open edX's per-IP login rate limiter
+  (`Too many failed login attempts`) tripping because all virtual users shared the k6 host IP — a
+  test artefact (and a desirable control), not a capacity fault.
+- Published figure: **the pilot host supports ~30 continuously active learners (≈300 signed-in
+  learners at typical 10 % activity) at p95 < 2.5 s; ~50 with degraded response; not 100.** Beyond
+  that, resize the droplet (8 vCPU) or split MySQL/Redis/Keycloak off the host (§8); the LMS is the
+  scaling unit, since the rest of the stack stayed under 5 % CPU.
+- Not measured: assessment submission, discussions, Studio authoring, per-tenant hosts under load.
+
 ### 14.12 Production acceptance checklist
 1. Mature OIDC provider on persistent storage; MFA enforced for staff/admin roles; key rotation
    rehearsed (§14.1).
@@ -572,7 +596,8 @@ Still required before real users (*acceptance requirements*):
 5. OEC support scoped; no `SupportStaffRole` grants exist (§14.5).
 6. Roles API wired from EduLage; token claims remain compact (§14.6).
 7. Credential wording in all user-facing text follows §14.7.
-8. No capacity figure published before §14.11 results.
+8. Capacity figure published from §14.11 results (~30 active / ~300 signed-in learners on the pilot
+   host; re-test after any resize).
 9. Compatibility matrix (§14.9) re-verified after each Tutor/Open edX upgrade.
 10. Server hardening (§14.10): host baseline, secret rotation and identity disabling done; SSH/admin
     allow-list, remaining Tutor credential rotation and backup rehearsal outstanding.
