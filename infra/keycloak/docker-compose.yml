@@ -11,10 +11,9 @@
 # The realm import (realm-edulage.json) carries the client + protocol mappers and the spike test
 # users. `--import-realm` only imports a realm that does not exist yet, so test users can be
 # disabled with scripts/spike/kc_disable_test_users.sh without being re-created on restart.
-# Staff users belong to the `edulage-staff` group (realm-edulage.json). Production acceptance
-# requires OTP for that group (Authentication → browser flow → conditional OTP on group membership)
-# and for the master-realm admin; the spike realm sets the TOTP policy and brute-force protection
-# but does not force OTP so the scripted SSO suites can run. Realm signing keys rotate via
+# Staff users belong to the `edulage-staff` group (realm-edulage.json). OTP is enforced for that
+# group by enforce-staff-mfa.py (role `mfa-required` + browser flow `browser-staff-mfa`; re-run it
+# after any realm re-import) and checked by verify-staff-mfa.sh. Realm signing keys rotate via
 # Realm settings → Keys: add a new RS256 provider with higher priority, keep the old key passive
 # until issued tokens expire (accessTokenLifespan=300s), then delete it.
 services:

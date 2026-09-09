@@ -355,8 +355,13 @@ Findings (spike):
   `ENABLE_REQUIRE_THIRD_PARTY_AUTH`).
 - Keycloak initially ran on dev-file (H2) storage; it now runs on PostgreSQL 16 (`infra/keycloak/`),
   with brute-force protection, 5-minute access tokens, refresh-token revocation and a TOTP policy in
-  the realm. Conditional OTP for staff/administrators is not yet *enforced* on the spike realm (the
-  scripted tests need password-only logins) — it is a production acceptance requirement (§14.12).
+  the realm. Conditional OTP is **enforced** for staff: members of `edulage-staff` carry the realm
+  role `mfa-required`, and the bound browser flow `browser-staff-mfa` requires an OTP for that role
+  (users without an authenticator are forced to enrol one at sign-in); learners are unaffected.
+  Applied by `infra/keycloak/enforce-staff-mfa.py`, proven by `infra/keycloak/verify-staff-mfa.sh`
+  (staff → `CONFIGURE_TOTP`, learner → straight back to the LMS). The master-realm admin has
+  `CONFIGURE_TOTP` as a required action. Scripted SSO suites that need password-only staff logins
+  must run against a copy of the realm or temporarily unbind the flow.
 - Secrets: Tutor config, OIDC client secret, service client secret, Keycloak admin and DB passwords
   live only on the server (`~/.local/share/tutor/config.yml`, `infra/keycloak/.env`); the Keycloak
   values were rotated during the Postgres migration; the remaining spike values are rotated in the
@@ -464,7 +469,8 @@ is onboarded; verified operationally, not by code).
 - Realm policy: brute-force protection, 300 s access tokens, refresh-token revocation, 30 min SSO idle
   / 10 h max, external SSL required, TOTP policy defined.
 - *Acceptance:* conditional OTP **enforced** for every `edulage_admin`, `institution_admin:*`,
-  `programme_admin:*`, `oec_support:*` identity; signing-key rotation rehearsed (JWKS, Open edX keeps
+  `programme_admin:*`, `oec_support:*` identity — done on the pilot realm (`edulage-staff` group →
+  `mfa-required` role → `browser-staff-mfa` flow); signing-key rotation rehearsed (JWKS, Open edX keeps
   validating); realm admin console reachable only from the administration allow-list.
 
 ### 14.2 Admission before first login
