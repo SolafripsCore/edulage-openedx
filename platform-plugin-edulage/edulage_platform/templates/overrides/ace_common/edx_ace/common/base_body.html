@@ -65,10 +65,10 @@
                       <tr>
                         <td align="{{ LANGUAGE_BIDI|yesno:"right,left" }}" valign="middle">
                           <a href="{% with_link_tracking site_url %}" target="_blank" style="text-decoration:none;">
-                            <img src="{{ logo_white_url }}" width="132" height="43" style="display:block;width:132px;height:auto;border:0;" alt="{{ platform_name }}"/>
+                            <img src="{{ logo_white_url }}" width="132" height="43" class="el-logo" style="display:block;width:132px;height:auto;border:0;" alt="{{ platform_name }}"/>
                           </a>
                         </td>
-                        <td align="{{ LANGUAGE_BIDI|yesno:"left,right" }}" valign="middle" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;white-space:nowrap;">
+                        <td align="{{ LANGUAGE_BIDI|yesno:"left,right" }}" valign="middle" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;white-space:nowrap;padding-left:16px;">
                           <a href="{% with_link_tracking programmes_url %}" target="_blank" style="color:#ffffff;text-decoration:none;font-weight:600;">{% trans "Programmes" %}</a>
                           <span style="color:#475569;">&nbsp;&nbsp;|&nbsp;&nbsp;</span>
                           <a href="{% with_link_tracking my_learning_url %}" target="_blank" style="color:#ffffff;text-decoration:none;font-weight:600;">{% trans "My learning" %}</a>
