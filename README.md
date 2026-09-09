@@ -13,6 +13,7 @@ everything EduLage-specific so the environment can be rebuilt from scratch:
   admission-gated enrolment filter, admissions integration API.
 - `infra/keycloak/` — stand-in EduLage identity provider used by the SSO spike.
 - `scripts/spike/` — seed scripts and runtime test suites (tenant isolation, admissions, SSO).
+- `scripts/pilot/` — controlled pilot content: `retire_demo_course.py` (removes the stock DemoX course), `seed_pilot_content.py` (CMS shell; one sample course per test institution, UNIA CS101 / UNIB MGT101), `seed_pilot_learners.py` (LMS shell; admitted enrolments + one demo certificate).
 - `docs/spike-multitenancy-sso.md` — spike report: architecture, SSO, roles, isolation findings,
   data mapping, API/events, security, limitations, production plan, estimate.
 - `theme/` — EduLage comprehensive theme / brand package. *(to come)*
