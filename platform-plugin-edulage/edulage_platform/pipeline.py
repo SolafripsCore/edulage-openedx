@@ -26,7 +26,7 @@ recorded before the learner's first login, and shortens the session for staff.
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 
-from . import identity
+from . import emails, identity
 from .middleware import STAFF_SESSION_KEY
 from .models import ManagedRole
 from .status import page_url
@@ -80,6 +80,7 @@ def sync_edulage_identity(backend, user=None, response=None, uid=None, new_assoc
     # unreliable here; a fresh link that was not made by ``link_verified_account`` is a new account.
     if new_association and not edulage_linked:
         identity.audit("created", user=user, sub=uid, email=user.email, detail=user.username)
+        emails.send_welcome(user)
     identity.apply_roles(user, claims, ManagedRole.SOURCE_TOKEN)
     identity.apply_pending_admissions(user, uid)
 

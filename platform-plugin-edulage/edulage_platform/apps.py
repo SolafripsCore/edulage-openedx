@@ -1,4 +1,7 @@
+from importlib import import_module
+
 from django.apps import AppConfig
+from django.conf import settings
 
 
 class EdulagePlatformConfig(AppConfig):
@@ -23,3 +26,7 @@ class EdulagePlatformConfig(AppConfig):
             },
         },
     }
+
+    def ready(self):
+        if settings.SERVICE_VARIANT == "lms":
+            import_module("edulage_platform.signals")

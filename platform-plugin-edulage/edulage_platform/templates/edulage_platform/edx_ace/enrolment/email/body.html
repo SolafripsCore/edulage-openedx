@@ -1,0 +1,87 @@
+{% extends 'ace_common/edx_ace/common/base_body.html' %}
+{% load i18n %}
+{% load ace %}
+
+{% block preview_text %}{% blocktrans %}{{ institution }} has confirmed your place on {{ course_title }}. It is now in My learning.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding-bottom:14px;">
+      <span style="display:inline-block;padding:4px 10px;border-radius:999px;background-color:#e7f6f2;color:#0e8e73;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">{% trans "Enrolment confirmed" %}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:26px;line-height:32px;font-weight:800;letter-spacing:-0.02em;color:#09184f;padding-bottom:16px;">
+      {% blocktrans %}You're in, {{ learner_name }}.{% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#475569;padding-bottom:20px;">
+      {% blocktrans trimmed %}
+      <b style="color:#0b1220;">{{ institution }}</b> has confirmed your admission and you are now enrolled in the course
+      run below. It has been added to My learning, where you can pick up where you left off at any time.
+      {% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <!-- course card: same anatomy as the My learning card -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td bgcolor="#09184f" style="background-color:#09184f;padding:16px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#2fbd9e;padding-bottom:4px;">
+                  {{ classification }}{% if credential %} &middot; {{ credential }}{% endif %}
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:20px;line-height:26px;font-weight:700;color:#ffffff;">
+                  {{ course_title }}
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;color:#cbd5e1;padding-top:4px;">
+                  {% if institution_url %}<a href="{% with_link_tracking institution_url %}" style="color:#cbd5e1;text-decoration:none;">{{ institution }}</a>{% else %}{{ institution }}{% endif %}{% if programme_title %} &middot; {% if programme_url %}<a href="{% with_link_tracking programme_url %}" style="color:#cbd5e1;text-decoration:none;">{{ programme_title }}</a>{% else %}{{ programme_title }}{% endif %}{% endif %}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#f7f9fc" style="background-color:#f7f9fc;padding:14px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="el-col" width="50%" valign="top" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#475569;padding-right:12px;">
+                  <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">{% trans "Runs" %}</span>
+                  {% if course_start %}{{ course_start }}{% if course_end %} &ndash; {{ course_end }}{% endif %}{% else %}{% trans "Self-paced" %}{% endif %}
+                </td>
+                <td class="el-col" width="50%" valign="top" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#475569;">
+                  <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">{% trans "Delivery" %}</span>
+                  {{ delivery_mode|default:_("Online") }}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      {% with course_cta_url=course_url course_cta_text=_("Start learning") %}
+        {% include 'ace_common/edx_ace/common/return_to_course_cta.html' %}
+      {% endwith %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;color:#475569;padding-top:4px;">
+      {% blocktrans trimmed %}
+      Academic decisions, timetables and results remain with {{ institution }}. Questions about the platform or
+      your account go to <a href="mailto:{{ support_email }}" style="color:#0e8e73;text-decoration:underline;">{{ support_email }}</a>.
+      {% endblocktrans %}
+    </td>
+  </tr>
+</table>
+{% endblock %}

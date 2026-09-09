@@ -163,3 +163,31 @@ class CourseListing(models.Model):
             "credential": self.credential,
             "delivery_mode": self.delivery_mode,
         }
+
+
+class SentEmail(models.Model):
+    """
+    One row per EduLage transactional e-mail delivered to a learner, keyed by message kind and
+    subject (course run, certificate, or empty for account-level mail). Open edX re-saves
+    certificates and enrolments freely, so this is what keeps each notice to a single send.
+    """
+
+    KIND_WELCOME = "welcome"
+    KIND_ENROLMENT = "enrolment"
+    KIND_CERTIFICATE = "certificate"
+    KIND_CHOICES = [
+        (KIND_WELCOME, "Welcome to EduLage"),
+        (KIND_ENROLMENT, "Enrolment confirmed"),
+        (KIND_CERTIFICATE, "Credential recorded"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="edulage_emails")
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES)
+    reference = models.CharField(max_length=255, blank=True, help_text="course run key or certificate id; empty for account mail")
+    sent = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "kind", "reference")]
+
+    def __str__(self):
+        return f"{self.kind} → {self.user.username} {self.reference}".strip()

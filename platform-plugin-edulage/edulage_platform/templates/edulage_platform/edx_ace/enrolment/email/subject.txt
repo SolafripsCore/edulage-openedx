@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}You're enrolled: {{ course_title }} ({{ institution }}){% endblocktrans %}{% endautoescape %}

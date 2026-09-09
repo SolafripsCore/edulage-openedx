@@ -19,4 +19,4 @@ edulage_platform = "edulage_platform.apps:EdulagePlatformConfig"
 include = ["edulage_platform*"]
 
 [tool.setuptools.package-data]
-edulage_platform = ["templates/**/*.html"]
+edulage_platform = ["templates/**/*.html", "templates/**/*.txt"]

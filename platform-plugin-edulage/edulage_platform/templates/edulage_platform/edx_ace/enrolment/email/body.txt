@@ -1,0 +1,20 @@
+{% load i18n %}{% autoescape off %}
+{% blocktrans %}You're in, {{ learner_name }}.{% endblocktrans %}
+
+{% blocktrans trimmed %}{{ institution }} has confirmed your admission and you are now enrolled in the course run below. It has been added to My learning.{% endblocktrans %}
+
+{{ course_title }}
+{{ classification }}{% if credential %} · {{ credential }}{% endif %}
+{{ institution }}{% if programme_title %} · {{ programme_title }}{% endif %}
+{% trans "Runs:" %} {% if course_start %}{{ course_start }}{% if course_end %} – {{ course_end }}{% endif %}{% else %}{% trans "Self-paced" %}{% endif %}
+{% trans "Delivery:" %} {{ delivery_mode|default:_("Online") }}
+
+{% trans "Start learning:" %} {{ course_url }}
+{% trans "My learning:" %} {{ my_learning_url }}
+
+{% blocktrans trimmed %}Academic decisions, timetables and results remain with {{ institution }}. Questions about the platform or your account go to {{ support_email }}.{% endblocktrans %}
+
+--
+{{ platform_name }} — The Global Education Village
+{{ site_url }}
+{% endautoescape %}

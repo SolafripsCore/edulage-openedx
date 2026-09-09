@@ -1,3 +1,5 @@
+from pathlib import Path
+
 ENROLLMENT_FILTER = "org.openedx.learning.course.enrollment.started.v1"
 ADMISSION_STEP = "edulage_platform.filters.RequireAdmission"
 CERTIFICATE_FILTER = "org.openedx.learning.certificate.render.started.v1"
@@ -8,6 +10,8 @@ LINK_STEP = "edulage_platform.pipeline.link_verified_account"
 IDENTITY_SYNC_STEP = "edulage_platform.pipeline.sync_edulage_identity"
 LEGACY_ROLE_SYNC_STEP = "edulage_platform.pipeline.sync_edulage_roles"
 ACCOUNT_STATUS_MIDDLEWARE = "edulage_platform.middleware.AccountStatusMiddleware"
+# Django templates that replace stock/theme files by path (ACE e-mail frame); searched before the theme.
+TEMPLATE_OVERRIDES = str(Path(__file__).resolve().parent.parent / "templates" / "overrides")
 
 
 def plugin_settings(settings):
@@ -20,6 +24,15 @@ def plugin_settings(settings):
     # Staff (any EduLage role above learner) get a short LMS session; learners keep the default.
     if not hasattr(settings, "EDULAGE_STAFF_SESSION_SECONDS"):
         settings.EDULAGE_STAFF_SESSION_SECONDS = 3600
+    if not hasattr(settings, "EDULAGE_BRAND_URL"):
+        settings.EDULAGE_BRAND_URL = f"https://apps.{settings.LMS_BASE}/brand"
+    if not hasattr(settings, "EDULAGE_EMAIL_FROM"):
+        settings.EDULAGE_EMAIL_FROM = ""  # empty → DEFAULT_FROM_EMAIL at send time
+    for engine in settings.TEMPLATES:
+        if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
+            dirs = list(engine.get("DIRS", []))
+            if TEMPLATE_OVERRIDES not in dirs:
+                engine["DIRS"] = [TEMPLATE_OVERRIDES] + dirs
     middleware = list(settings.MIDDLEWARE)
     if ACCOUNT_STATUS_MIDDLEWARE not in middleware:
         anchor = next(i for i, m in enumerate(middleware) if m.endswith(("UserStandingMiddleware", "AuthenticationMiddleware")))
