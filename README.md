@@ -39,6 +39,17 @@ tutor local do importdemocourse    # demo course
 tutor config save --set KEY=VALUE && tutor local launch -I   # apply config change
 ```
 
+### Outgoing mail
+
+Transactional mail (LMS welcome/enrolment/certificate, Keycloak password/verification) goes out
+through Resend as `support@edulage.org`. `edulage.org` is a verified sending domain in Resend
+(DKIM `resend._domainkey`, return-path `send.` SPF/MX, `_dmarc` — all in Vercel DNS). The relay is
+`smtp.resend.com:2587` STARTTLS (DigitalOcean blocks outbound 25/465/587), user `resend`, password
+= a Resend *sending-only* API key scoped to edulage.org. Apply/rotate with
+`RESEND_SMTP_KEY=re_... scripts/smtp_apply.sh` (LMS/CMS) and the realm's SMTP settings in the
+Keycloak admin console (realm `edulage` → Realm settings → Email). Test:
+`tutor local run lms ./manage.py lms edulage_email enrolment <user> <course-key> --send --resend`.
+
 Upgrades: follow https://docs.tutor.edly.io/local.html#upgrading-from-older-releases — one named
 release at a time, on staging first.
 
