@@ -34,9 +34,11 @@ class EdulageOpenIdConnect(OpenIdConnectAuth):
     def oidc_endpoint(self):
         return self.setting("OIDC_ENDPOINT")
 
-    def authorization_url(self):
-        url = super().authorization_url()
-        request = getattr(self.strategy, "request", None)
+    def auth_url(self):
+        # Only the redirect target changes; authorization_url() stays canonical because it is the
+        # key under which the OIDC nonce is stored and later looked up on /auth/complete/.
+        url = super().auth_url()
+        request = self.strategy.request
         if request is not None and request.GET.get(REGISTER_PARAM) == "1":
-            return url.replace("/protocol/openid-connect/auth", "/protocol/openid-connect/registrations")
+            return url.replace("/protocol/openid-connect/auth?", "/protocol/openid-connect/registrations?", 1)
         return url
