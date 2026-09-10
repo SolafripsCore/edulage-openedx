@@ -17,6 +17,7 @@ Each notice is sent at most once per learner and subject (``SentEmail``); failur
 never break the sign-in, enrolment or certificate flow that triggered them.
 """
 import logging
+from contextlib import contextmanager
 from datetime import timezone
 
 from django.conf import settings
@@ -84,11 +85,21 @@ def _site():
     return Site.objects.get_current()
 
 
+@contextmanager
 def _request_scope(user):
-    """ACE template tags (link tracking, GA pixel) need a request; this supplies one outside a view/task."""
+    """
+    ACE template tags (link tracking, GA pixel) need a request; this supplies one outside a
+    view/task and leaves a real in-flight request (crum) untouched, since emulate_http_request
+    clears it on exit.
+    """
+    from crum import get_current_request  # pylint: disable=import-outside-toplevel
     from openedx.core.lib.celery.task_utils import emulate_http_request  # pylint: disable=import-outside-toplevel
 
-    return emulate_http_request(site=_site(), user=user)
+    if get_current_request() is not None:
+        yield
+        return
+    with emulate_http_request(site=_site(), user=user):
+        yield
 
 
 def base_context(user):
@@ -129,7 +140,7 @@ def _course_context(course_key):
         "course_key": str(key),
         "course_title": overview.display_name,
         "course_number": overview.display_number_with_default,
-        "course_url": lms_url(f"learn/course/{key}/home"),
+        "course_url": f"{settings.LEARNING_MICROFRONTEND_URL}/course/{key}/home",
         "course_start": date_format(start, "j F Y") if start else "",
         "course_end": date_format(end, "j F Y") if end else "",
         "institution": listing.get("institution_name") or overview.display_org_with_default,

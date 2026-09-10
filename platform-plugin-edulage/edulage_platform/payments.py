@@ -88,7 +88,7 @@ def _listing(course_key):
 
 
 def _course_home(course_key):
-    return f"{settings.LMS_ROOT_URL}/learn/course/{course_key}/home"
+    return f"{settings.LEARNING_MICROFRONTEND_URL}/course/{course_key}/home"
 
 
 def _enrol(user, course_key):
@@ -185,7 +185,7 @@ def callback_view(request):
         raise Http404
     if payment.status != Payment.STATUS_SUCCESS:
         try:
-            verify(payment)
+            payment = verify(payment)
         except (PaystackError, requests.RequestException):
             log.exception("edulage: Paystack verify failed for %s", reference)
     if payment.status == Payment.STATUS_SUCCESS:
@@ -231,7 +231,7 @@ def webhook_view(request):
 def verify(payment):
     """Ask Paystack for the transaction's real state and apply it."""
     data = _api("GET", f"/transaction/verify/{payment.reference}")
-    apply_verification(payment, data)
+    return apply_verification(payment, data)
 
 
 def apply_verification(payment, data):
