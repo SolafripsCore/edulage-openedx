@@ -6,7 +6,8 @@ same SMTP settings as the stock platform mail) and rendered from
 * ``welcome``      — first sign-in through EduLage created a learning account;
 * ``enrolment``    — an admission was applied and the learner is enrolled in a course run;
 * ``certificate``  — a certificate became downloadable (the institution awarded the credential,
-                     EduLage recorded it and it can be verified on edulage.org).
+                     EduLage recorded it and it can be verified on edulage.org);
+* ``receipt``      — a Paystack payment for a paid open-enrolment run was verified.
 
 Every stock Open edX e-mail (activation, password reset, course updates, instructor mail…)
 extends ``ace_common/edx_ace/common/base_body.html``; ``templates/overrides`` replaces that frame
@@ -62,10 +63,14 @@ def _message_types():
     class Certificate(EdulageMessage):
         NAME = "certificate"
 
+    class Receipt(EdulageMessage):
+        NAME = "receipt"
+
     return {
         SentEmail.KIND_WELCOME: Welcome,
         SentEmail.KIND_ENROLMENT: Enrolment,
         SentEmail.KIND_CERTIFICATE: Certificate,
+        SentEmail.KIND_RECEIPT: Receipt,
     }
 
 
@@ -134,6 +139,7 @@ def _course_context(course_key):
         "classification": listing.get("classification_label", "Course"),
         "credential": listing.get("credential", ""),
         "delivery_mode": listing.get("delivery_mode", ""),
+        "open_enrolment": listing.get("enrolment_policy", "admission") != "admission",
     }
 
 
@@ -195,6 +201,27 @@ def send_welcome(user):
 
 def send_enrolment(user, course_key):
     return _send(user, SentEmail.KIND_ENROLMENT, str(course_key), enrolment_context(user, course_key))
+
+
+def receipt_context(payment):
+    context = base_context(payment.user)
+    context.update(_course_context(payment.course_key))
+    paid_at = payment.paid_at.astimezone(timezone.utc) if payment.paid_at else None
+    context.update(
+        {
+            "reference": payment.reference,
+            "amount": f"{payment.amount:,.2f}",
+            "currency": payment.currency,
+            "channel": payment.channel,
+            "paid_at": date_format(paid_at, "j F Y, H:i") if paid_at else "",
+            "billing_email": settings.EDULAGE_BILLING_EMAIL,
+        }
+    )
+    return context
+
+
+def send_receipt(payment):
+    return _send(payment.user, SentEmail.KIND_RECEIPT, payment.reference, receipt_context(payment))
 
 
 def send_certificate(user, course_key, verify_uuid):

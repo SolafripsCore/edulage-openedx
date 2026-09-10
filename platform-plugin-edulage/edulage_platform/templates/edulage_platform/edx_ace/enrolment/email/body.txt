@@ -1,7 +1,7 @@
 {% load i18n %}{% autoescape off %}
 {% blocktrans %}You're in, {{ learner_name }}.{% endblocktrans %}
 
-{% blocktrans trimmed %}{{ institution }} has confirmed your admission and you are now enrolled in the course run below. It has been added to My learning.{% endblocktrans %}
+{% if open_enrolment %}{% blocktrans trimmed %}You are now enrolled in the course run below from {{ institution }}. It has been added to My learning.{% endblocktrans %}{% else %}{% blocktrans trimmed %}{{ institution }} has confirmed your admission and you are now enrolled in the course run below. It has been added to My learning.{% endblocktrans %}{% endif %}
 
 {{ course_title }}
 {{ classification }}{% if credential %} · {{ credential }}{% endif %}

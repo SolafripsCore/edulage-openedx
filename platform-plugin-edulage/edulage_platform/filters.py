@@ -7,7 +7,7 @@ from openedx_filters import PipelineStep
 from openedx_filters.learning.filters import CourseEnrollmentStarted
 
 from .certificates import certificate_context, certificate_template
-from .models import Admission
+from .models import Admission, CourseListing, Payment
 from .status import page_url
 
 log = logging.getLogger(__name__)
@@ -24,9 +24,13 @@ def has_course_role(user, course_key):
 
 class RequireAdmission(PipelineStep):
     """
-    Block enrolment unless EduLage has recorded an active Admission for this learner and
-    course run. Platform staff and course team members are exempt so authoring and
-    support workflows keep working.
+    Enforce the run's enrolment policy (``CourseListing.enrolment_policy``, default admission):
+
+    * ``open_free`` — anyone with an account may enrol;
+    * ``open_paid`` — a successful, unconsumed Paystack payment for this learner and run is required;
+    * ``admission`` — an active Admission recorded by EduLage is required.
+
+    Platform staff and course team members are exempt so authoring and support workflows keep working.
     """
 
     def run_filter(self, user, course_key, mode):  # pylint: disable=arguments-differ
@@ -36,9 +40,21 @@ class RequireAdmission(PipelineStep):
             return {}
         if Admission.objects.filter(user=user, course_key=course_key, status=Admission.STATUS_ADMITTED).exists():
             return {}
+        listing = CourseListing.objects.filter(course_key=course_key).first()
+        policy = listing.enrolment_policy if listing else CourseListing.POLICY_ADMISSION
+        if policy == CourseListing.POLICY_OPEN_FREE:
+            return {}
+        if policy == CourseListing.POLICY_OPEN_PAID:
+            if Payment.objects.filter(user=user, course_key=course_key, status=Payment.STATUS_SUCCESS).exists():
+                return {}
+            log.info("edulage: blocked enrolment of %s in %s (paid run, no payment)", user.username, course_key)
+            raise CourseEnrollmentStarted.PreventEnrollment(
+                "This course is a paid open-enrolment course. "
+                "Complete payment at https://edulage.org/programmes to enrol."
+            )
         log.info("edulage: blocked enrolment of %s in %s (no admission)", user.username, course_key)
         raise CourseEnrollmentStarted.PreventEnrollment(
-            "Enrolment on EduLage follows the institution's admission decision. "
+            "This programme requires admission by the institution. "
             f"See {settings.LMS_ROOT_URL}{page_url('pending')} or apply at https://edulage.org/programmes."
         )
 

@@ -4,10 +4,15 @@ plain-text messages: refused account link, suspended account, admission not yet 
 generic sign-in failure. Served by the LMS at ``/edulage/account/<code>/`` and rendered from a
 self-contained template (fonts, logo and tokens from the brand package on the MFE host).
 """
+from urllib.parse import urlencode
+
 from django.conf import settings
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
+from django.utils.http import url_has_allowed_host_and_scheme
+
+from .auth import REGISTER_PARAM
 
 SITE_URL = "https://edulage.org"
 
@@ -44,16 +49,16 @@ PAGES = {
     },
     "pending": {
         "status": 200,
-        "eyebrow": "Admission pending",
-        "title": "Your admission hasn't been confirmed yet",
+        "eyebrow": "Admission required",
+        "title": "This programme opens once the institution admits you",
         "body": (
-            "Programmes and courses appear in My learning as soon as the institution confirms your "
-            "admission. Enrolment on EduLage always follows the institution's admission decision, "
-            "so there is nothing more you need to do here."
+            "Degrees and selective programmes on EduLage follow the institution's admission decision. "
+            "Your account is active: open short courses can be joined straight away, and any "
+            "applications you have made are tracked under Applications in My learning."
         ),
         "steps": [
-            "Check the status of your application in the institution's admissions portal.",
-            "Once admitted, sign in again and your programme will be waiting in My learning.",
+            "Apply to the programme from its page on edulage.org if you have not done so yet.",
+            "When the institution admits you, the programme unlocks in My learning automatically.",
         ],
         "primary": ("Go to My learning", "/dashboard"),
         "secondary": ("Browse programmes", f"{SITE_URL}/programmes"),
@@ -112,3 +117,19 @@ def status_view(request, code):
     if code not in PAGES:
         raise Http404
     return render_status(request, code)
+
+
+@never_cache
+def register_view(request):
+    """
+    ``/edulage/register/`` — the "Create account" entry point linked from edulage.org and the LMS
+    sign-in page. Starts the EduLage SSO flow at the IdP's registration form; after e-mail
+    verification the learner lands on My Learning with a JIT-created LMS account.
+    """
+    if request.user.is_authenticated:
+        return HttpResponseRedirect("/dashboard")
+    nxt = request.GET.get("next", "/dashboard")
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        nxt = "/dashboard"
+    query = urlencode({"auth_entry": "login", "next": nxt, REGISTER_PARAM: "1"})
+    return HttpResponseRedirect(f"/auth/login/edulage/?{query}")

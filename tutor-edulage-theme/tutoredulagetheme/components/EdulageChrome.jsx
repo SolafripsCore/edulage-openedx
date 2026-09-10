@@ -81,6 +81,7 @@ const elConfig = () => {
     dashboard: cfg.LEARNER_DASHBOARD_URL || `${lms}/dashboard`,
     login: cfg.LOGIN_URL || `${lms}/login`,
     logout: cfg.LOGOUT_URL || `${lms}/logout`,
+    register: `${lms}/edulage/register/`,
     account: cfg.ACCOUNT_SETTINGS_URL || `${lms}/account/settings`,
     profile: cfg.ACCOUNT_PROFILE_URL || lms,
     studio: cfg.STUDIO_BASE_URL || '',
@@ -130,7 +131,7 @@ const ElAccountMenu = ({ user, c, open, setOpen }) => {
     return (
       <>
         <ElButton href={c.login} variant="secondary" compact>Sign in</ElButton>
-        <ElButton href={`${c.site}/programmes`} compact>Explore programmes</ElButton>
+        <ElButton href={c.register} compact>Create account</ElButton>
       </>
     );
   }
@@ -202,6 +203,25 @@ const EdulageHeader = ({ course }) => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('pointerdown', handlePointerDown);
     };
+  }, []);
+
+  // Sign-in page (frontend-app-authn has no slots): add the "Create account" line under the
+  // EduLage SSO button once the form has rendered. Registration lives on the IdP, not in the MFE.
+  useEffect(() => {
+    if (authenticatedUser || !/^\/authn\/login/.test(window.location.pathname)) { return undefined; }
+    const inject = () => {
+      const social = document.querySelector('form[name="sign-in-form"] > .row.m-0');
+      if (!social || social.querySelector('.el-authn-register')) { return Boolean(social); }
+      const p = document.createElement('p');
+      p.className = 'el-authn-register';
+      p.innerHTML = `New to EduLage? <a href="${c.register}">Create account</a>`;
+      social.appendChild(p);
+      return true;
+    };
+    if (inject()) { return undefined; }
+    const observer = new MutationObserver(() => { if (inject()) { observer.disconnect(); } });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -362,7 +382,7 @@ const EdulageHeader = ({ course }) => {
               ) : (
                 <>
                   <ElButton href={c.login} variant="secondary">Sign in</ElButton>
-                  <ElButton href={`${c.site}/programmes`}>Explore programmes</ElButton>
+                  <ElButton href={c.register}>Create account</ElButton>
                 </>
               )}
             </div>
@@ -468,16 +488,65 @@ const EdulageNoCoursesView = () => {
   return (
     <section className="el-empty" aria-labelledby="el-empty-title">
       <p className="el-eyebrow">My learning</p>
-      <h2 id="el-empty-title" className="el-empty__title">You are not enrolled in any programme yet</h2>
+      <h2 id="el-empty-title" className="el-empty__title">Welcome to My learning</h2>
       <p className="el-empty__text">
-        Enrolled programmes and courses appear here once an institution has approved your
-        admission. Browse the EduLage catalogue to find accredited programmes from
-        participating tertiary institutions.
+        Your EduLage account is ready. Join a free or paid short course and it appears here
+        straight away; degrees and selective programmes appear as soon as the institution
+        admits you. Browse the catalogue to find programmes from participating institutions.
       </p>
       <div className="el-empty__actions">
         <ElButton href={`${c.site}/programmes`}>Explore programmes</ElButton>
         <ElButton href={`${c.site}/help`} variant="secondary">Help &amp; support</ElButton>
       </div>
+    </section>
+  );
+};
+
+/** The signed-in learner's applications (admission-required programmes), newest first. */
+const useElApplications = () => {
+  const [apps, setApps] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/applications/`)
+      .then((r) => { if (alive) { setApps(r.data.applications || []); } })
+      .catch(() => { if (alive) { setApps([]); } });
+    return () => { alive = false; };
+  }, []);
+  return apps;
+};
+
+const EL_APP_TONE = { admitted: 'ok', declined: 'bad', withdrawn: 'muted', deferred: 'muted' };
+
+/** Learner dashboard — "Applications" panel: status of each admission-required programme applied for. */
+const EdulageApplicationsPanel = () => {
+  const c = elConfig();
+  const apps = useElApplications();
+  if (!apps) { return null; }
+  return (
+    <section className="el-apps" aria-labelledby="el-apps-title">
+      <p className="el-eyebrow">Applications</p>
+      <h2 id="el-apps-title" className="el-apps__title">Admission-required programmes</h2>
+      {apps.length === 0 ? (
+        <p className="el-apps__empty">
+          You have no applications yet. Degrees and selective programmes need the institution&apos;s
+          admission; <a href={`${c.site}/programmes`}>find a programme</a> and apply from its page.
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {apps.map((a) => (
+            <li key={`${a.course_id}-${a.application_id}`} className="el-apps__item">
+              <div>
+                <p className="el-apps__programme">{a.programme_title || a.course_id}</p>
+                <p className="el-apps__meta">{a.institution_name}{a.credential ? ` · ${a.credential}` : ''}</p>
+              </div>
+              <span className={`el-apps__status el-apps__status--${EL_APP_TONE[a.status] || 'open'}`}>{a.status_label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 };
@@ -492,6 +561,8 @@ const EdulageDashboardSidebar = () => {
     ['Learner support', c.support, 'Help with access, enrolment and your learning schedule.'],
   ];
   return (
+    <>
+    <EdulageApplicationsPanel />
     <aside className="el-side" aria-label="EduLage services">
       <p className="el-eyebrow">EduLage</p>
       <ul className="el-side__list">
@@ -503,6 +574,7 @@ const EdulageDashboardSidebar = () => {
         ))}
       </ul>
     </aside>
+    </>
   );
 };
 

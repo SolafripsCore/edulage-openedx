@@ -30,3 +30,5 @@ class EdulagePlatformConfig(AppConfig):
     def ready(self):
         if settings.SERVICE_VARIANT == "lms":
             import_module("edulage_platform.signals")
+        elif settings.SERVICE_VARIANT == "cms":
+            import_module("edulage_platform.catalogue").connect_cms_signals()

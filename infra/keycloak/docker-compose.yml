@@ -16,6 +16,11 @@
 # after any realm re-import) and checked by verify-staff-mfa.sh. Realm signing keys rotate via
 # Realm settings → Keys: add a new RS256 provider with higher priority, keep the old key passive
 # until issued tokens expire (accessTokenLifespan=300s), then delete it.
+#
+# themes/edulage is the EduLage login + e-mail theme (parent keycloak.v2 / base). Keycloak caches
+# themes in production mode: restart the container after editing it. Realm settings that make
+# self-registration work (registrationAllowed, verifyEmail, loginTheme/emailTheme=edulage, ...) are
+# applied to the live realm by apply-realm-settings.sh and mirrored in realm-edulage.json.
 services:
   postgres:
     image: postgres:16.6
@@ -52,6 +57,7 @@ services:
       JAVA_OPTS_KC_HEAP: "-Xms128m -Xmx512m"
     volumes:
       - ./realm-edulage.json:/opt/keycloak/data/import/realm-edulage.json:ro
+      - ./themes/edulage:/opt/keycloak/themes/edulage:ro
     restart: unless-stopped
     networks: [tutor]
 

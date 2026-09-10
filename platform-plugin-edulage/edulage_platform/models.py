@@ -6,7 +6,9 @@ from opaque_keys.edx.django.models import CourseKeyField
 class Admission(models.Model):
     """
     An institution's admission decision, recorded by EduLage, that authorises one learner
-    to be enrolled in one course run. Enrolment without an active Admission is blocked.
+    to be enrolled in one course run. Also carries the application lifecycle (submitted, under
+    review) so My learning can show applications before a decision. Enrolment in an
+    admission-required run without an active Admission is blocked.
 
     Keyed by the immutable EduLage user id (OIDC ``sub``). ``user`` is filled when the
     learner has an Open edX account; a *pending* admission (``user`` NULL) is applied at the
@@ -14,14 +16,22 @@ class Admission(models.Model):
     the LMS.
     """
 
+    STATUS_SUBMITTED = "submitted"
+    STATUS_UNDER_REVIEW = "under_review"
     STATUS_ADMITTED = "admitted"
+    STATUS_DECLINED = "declined"
     STATUS_WITHDRAWN = "withdrawn"
     STATUS_DEFERRED = "deferred"
     STATUS_CHOICES = [
+        (STATUS_SUBMITTED, "Application submitted"),
+        (STATUS_UNDER_REVIEW, "Under review"),
         (STATUS_ADMITTED, "Admitted"),
+        (STATUS_DECLINED, "Not admitted"),
         (STATUS_WITHDRAWN, "Withdrawn"),
         (STATUS_DEFERRED, "Deferred"),
     ]
+    # Application lifecycle states shown in My learning before a decision is taken.
+    OPEN_STATUSES = (STATUS_SUBMITTED, STATUS_UNDER_REVIEW)
 
     edulage_sub = models.CharField(
         max_length=128, null=True, blank=True, db_index=True, help_text="EduLage user id (OIDC sub); NULL if unknown"
@@ -135,9 +145,24 @@ class CourseListing(models.Model):
         ("cpd", "Continuing professional development"),
     ]
 
+    POLICY_ADMISSION = "admission"
+    POLICY_OPEN_FREE = "open_free"
+    POLICY_OPEN_PAID = "open_paid"
+    POLICIES = [
+        (POLICY_ADMISSION, "Admission required"),
+        (POLICY_OPEN_FREE, "Open enrolment — free"),
+        (POLICY_OPEN_PAID, "Open enrolment — paid"),
+    ]
+
     course_key = CourseKeyField(max_length=255, unique=True)
     institution = models.CharField(max_length=64, help_text="EduLage institution slug / Open edX org short name")
     institution_name = models.CharField(max_length=160)
+    enrolment_policy = models.CharField(
+        max_length=16, choices=POLICIES, default=POLICY_ADMISSION,
+        help_text="Set by the institution's course admin in Studio (Advanced settings → Other course settings → edulage)",
+    )
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Fixed price for open_paid runs")
+    currency = models.CharField(max_length=3, default="NGN")
     institution_logo = models.URLField(blank=True)
     institution_url = models.URLField(blank=True, help_text="Institution profile on edulage.org")
     programme_title = models.CharField(max_length=200, blank=True, help_text="Parent programme, if the run is part of one")
@@ -150,8 +175,19 @@ class CourseListing(models.Model):
     def __str__(self):
         return f"{self.course_key} ({self.institution})"
 
+    @property
+    def is_open(self):
+        return self.enrolment_policy in (self.POLICY_OPEN_FREE, self.POLICY_OPEN_PAID)
+
+    @property
+    def is_paid(self):
+        return self.enrolment_policy == self.POLICY_OPEN_PAID
+
     def as_dict(self):
         return {
+            "enrolment_policy": self.enrolment_policy,
+            "price": str(self.price) if self.is_paid else "0.00",
+            "currency": self.currency,
             "institution": self.institution,
             "institution_name": self.institution_name,
             "institution_logo": self.institution_logo,
@@ -175,10 +211,12 @@ class SentEmail(models.Model):
     KIND_WELCOME = "welcome"
     KIND_ENROLMENT = "enrolment"
     KIND_CERTIFICATE = "certificate"
+    KIND_RECEIPT = "receipt"
     KIND_CHOICES = [
         (KIND_WELCOME, "Welcome to EduLage"),
         (KIND_ENROLMENT, "Enrolment confirmed"),
         (KIND_CERTIFICATE, "Credential recorded"),
+        (KIND_RECEIPT, "Payment receipt"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="edulage_emails")
@@ -191,3 +229,51 @@ class SentEmail(models.Model):
 
     def __str__(self):
         return f"{self.kind} → {self.user.username} {self.reference}".strip()
+
+
+class Payment(models.Model):
+    """
+    One Paystack transaction for one learner and one paid open-enrolment run. Created when
+    checkout is initialised (``initialized``), settled only by server-side verification
+    (``/transaction/verify`` or a signature-checked webhook) — never by the browser callback
+    alone. ``status=success`` is what the enrolment filter accepts; ``enrolled`` records that the
+    enrolment has been created so repeated callbacks/webhooks are no-ops.
+    Institution-scoped so each institution's records and payouts can be reconciled.
+    """
+
+    STATUS_INITIALIZED = "initialized"
+    STATUS_SUCCESS = "success"
+    STATUS_FAILED = "failed"
+    STATUS_ABANDONED = "abandoned"
+    STATUS_CHOICES = [
+        (STATUS_INITIALIZED, "Initialised"),
+        (STATUS_SUCCESS, "Successful"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_ABANDONED, "Abandoned"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="edulage_payments")
+    course_key = CourseKeyField(max_length=255, db_index=True)
+    institution = models.CharField(max_length=64, db_index=True, help_text="Open edX org short name of the run")
+    reference = models.CharField(max_length=64, unique=True, help_text="Our reference, passed to Paystack")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, help_text="Major units (e.g. NGN), price at checkout")
+    currency = models.CharField(max_length=3, default="NGN")
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_INITIALIZED, db_index=True)
+    email = models.EmailField(help_text="Customer e-mail sent to Paystack")
+    paystack_id = models.CharField(max_length=32, blank=True, help_text="Paystack transaction id")
+    channel = models.CharField(max_length=32, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    gateway_response = models.CharField(max_length=255, blank=True)
+    enrolled = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.reference} {self.user.username} → {self.course_key} {self.amount} {self.currency} [{self.status}]"
+
+    @property
+    def amount_minor(self):
+        return int(round(self.amount * 100))

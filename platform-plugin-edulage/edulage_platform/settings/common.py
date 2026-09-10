@@ -28,6 +28,17 @@ def plugin_settings(settings):
         settings.EDULAGE_BRAND_URL = f"https://apps.{settings.LMS_BASE}/brand"
     if not hasattr(settings, "EDULAGE_EMAIL_FROM"):
         settings.EDULAGE_EMAIL_FROM = ""  # empty → DEFAULT_FROM_EMAIL at send time
+    # Institution course admins set enrolment policy/price in Studio → Advanced settings → Other course settings.
+    settings.FEATURES["ENABLE_OTHER_COURSE_SETTINGS"] = True
+    # Paystack (test or live secret; never logged). Empty disables checkout.
+    if not hasattr(settings, "EDULAGE_PAYSTACK_SECRET_KEY"):
+        settings.EDULAGE_PAYSTACK_SECRET_KEY = ""
+    if not hasattr(settings, "EDULAGE_PAYSTACK_PUBLIC_KEY"):
+        settings.EDULAGE_PAYSTACK_PUBLIC_KEY = ""
+    if not hasattr(settings, "EDULAGE_SITE_URL"):
+        settings.EDULAGE_SITE_URL = "https://edulage.org"
+    if not hasattr(settings, "EDULAGE_BILLING_EMAIL"):
+        settings.EDULAGE_BILLING_EMAIL = "billing@edulage.org"
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))

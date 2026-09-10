@@ -20,6 +20,11 @@ a signed-in user is pushed by EduLage through ``POST /edulage/api/v1/users/statu
 """
 from social_core.backends.open_id_connect import OpenIdConnectAuth
 
+# Query flag on ``/auth/login/edulage/`` that sends the learner to the IdP's registration form
+# (Keycloak ``/protocol/openid-connect/registrations``) instead of its sign-in form. The rest of the
+# flow is identical: on return the LMS account is JIT-created (``skip_registration_form``).
+REGISTER_PARAM = "edulage_register"
+
 
 class EdulageOpenIdConnect(OpenIdConnectAuth):
     name = "edulage"
@@ -28,3 +33,10 @@ class EdulageOpenIdConnect(OpenIdConnectAuth):
 
     def oidc_endpoint(self):
         return self.setting("OIDC_ENDPOINT")
+
+    def authorization_url(self):
+        url = super().authorization_url()
+        request = getattr(self.strategy, "request", None)
+        if request is not None and request.GET.get(REGISTER_PARAM) == "1":
+            return url.replace("/protocol/openid-connect/auth", "/protocol/openid-connect/registrations")
+        return url

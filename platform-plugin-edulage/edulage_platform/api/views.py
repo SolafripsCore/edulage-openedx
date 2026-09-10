@@ -8,7 +8,7 @@ Learners are identified by the immutable EduLage user id (OIDC ``sub``). ``usern
 
 POST /edulage/api/v1/admissions/
   {"sub": "...", "course_id": "course-v1:ORG+CODE+RUN", "application_id": "APP-1",
-   "institution": "ORG", "action": "admit" | "withdraw" | "defer"}
+   "institution": "ORG", "action": "submit" | "review" | "admit" | "decline" | "withdraw" | "defer"}
   -> 200 applied (learner has an LMS account, enrolment synced)
   -> 202 pending (no LMS account yet; applied automatically at first SSO login)
 GET  /edulage/api/v1/admissions/?sub=...&course_id=...
@@ -26,6 +26,10 @@ PUT  /edulage/api/v1/listings/   {"listings": [{"course_id": "...", "institution
   Presentation metadata from the EduLage catalogue for course runs (upsert, idempotent).
 GET  /edulage/api/v1/dashboard/courses/   (learner, session auth)
   Listing metadata for the caller's own enrolments, used by the "My learning" cards.
+GET  /edulage/api/v1/dashboard/applications/   (learner, session auth)
+  The caller's applications/admissions with status, for the "Applications" panel.
+GET  /edulage/api/v1/runs/?course_id=...   (public)
+  Enrolment policy (admission / open_free / open_paid) and price per run, for edulage.org CTAs.
 
 POST/PUT are idempotent: repeating a call converges on the same state, so EduLage may retry on
 timeouts without side effects.
@@ -49,7 +53,10 @@ from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, Suppo
 User = get_user_model()
 
 ACTION_TO_STATUS = {
+    "submit": Admission.STATUS_SUBMITTED,
+    "review": Admission.STATUS_UNDER_REVIEW,
     "admit": Admission.STATUS_ADMITTED,
+    "decline": Admission.STATUS_DECLINED,
     "withdraw": Admission.STATUS_WITHDRAWN,
     "defer": Admission.STATUS_DEFERRED,
 }
@@ -95,6 +102,7 @@ def _serialize(adm):
         "application_id": adm.application_id,
         "institution": adm.institution,
         "status": adm.status,
+        "status_label": adm.get_status_display(),
         "pending": adm.is_pending,
         "modified": adm.modified.isoformat(),
     }
@@ -261,8 +269,9 @@ class SupportLearnerView(APIView):
 
 LISTING_FIELDS = (
     "institution", "institution_name", "institution_logo", "institution_url", "programme_title", "programme_url",
-    "classification", "credential", "delivery_mode",
+    "classification", "credential", "delivery_mode", "enrolment_policy", "price", "currency",
 )
+PUBLIC_RUN_FIELDS = ("course_id", "enrolment_policy", "price", "currency", "institution", "institution_name", "classification")
 
 
 def _absolute_media_url(url):
@@ -275,6 +284,9 @@ def _serialize_listing(course_key, listing, org=None):
     else:
         data = {f: "" for f in LISTING_FIELDS}
         data.update(
+            enrolment_policy=CourseListing.POLICY_ADMISSION,
+            price="0.00",
+            currency="NGN",
             institution=course_key.org,
             institution_name=(org.name if org else course_key.org),
             institution_logo=_absolute_media_url(org.logo.url) if org and org.logo else "",
@@ -301,6 +313,8 @@ class ListingsView(IntegrationView):
                 return Response({"error": "course_id is required and must be valid"}, status=status.HTTP_400_BAD_REQUEST)
             if item.get("classification", "short") not in valid:
                 return Response({"error": f"unknown classification for {course_key}"}, status=status.HTTP_400_BAD_REQUEST)
+            if item.get("enrolment_policy", CourseListing.POLICY_ADMISSION) not in {p for p, _ in CourseListing.POLICIES}:
+                return Response({"error": f"unknown enrolment_policy for {course_key}"}, status=status.HTTP_400_BAD_REQUEST)
             defaults = {f: item[f] for f in LISTING_FIELDS if f in item}
             defaults.setdefault("institution", course_key.org)
             defaults.setdefault("institution_name", course_key.org)
@@ -311,6 +325,57 @@ class ListingsView(IntegrationView):
                 listing, _ = CourseListing.objects.update_or_create(course_key=course_key, defaults=defaults)
                 result.append(_serialize_listing(course_key, listing))
         return Response({"listings": result})
+
+
+class PublicRunsView(APIView):
+    """
+    Public, unauthenticated: enrolment policy and price for course runs, read by edulage.org
+    programme pages to render "Enrol now" / "Enrol now — ₦X" / "Apply".
+    GET /edulage/api/v1/runs/?course_id=...&course_id=...   (max 50)
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+
+    def get(self, request):
+        keys = []
+        for raw in request.query_params.getlist("course_id")[:50]:
+            try:
+                keys.append(CourseKey.from_string(raw))
+            except InvalidKeyError:
+                continue
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        runs = []
+        for k in keys:
+            data = _serialize_listing(k, listings.get(k))
+            runs.append({f: data[f] for f in PUBLIC_RUN_FIELDS})
+        return Response({"runs": runs})
+
+
+class DashboardApplicationsView(APIView):
+    """The caller's own applications/admissions with catalogue metadata, for the My learning panel."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        admissions = list(Admission.objects.filter(user=request.user).order_by("-modified"))
+        keys = [a.course_key for a in admissions]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        items = []
+        for adm in admissions:
+            item = _serialize_listing(adm.course_key, listings.get(adm.course_key), orgs.get(adm.course_key.org))
+            item.update(
+                application_id=adm.application_id,
+                status=adm.status,
+                status_label=adm.get_status_display(),
+                modified=adm.modified.isoformat(),
+            )
+            items.append(item)
+        return Response({"applications": items})
 
 
 class DashboardCoursesView(APIView):
