@@ -30,7 +30,7 @@ GET  /edulage/api/v1/dashboard/applications/   (learner, session auth)
   The caller's applications/admissions with status, for the "Applications" panel.
 GET  /edulage/api/v1/me/   (session auth; 401 when anonymous)
   Who the caller is and which "doors" to show: learner always, ``studio``/``teach`` for institution
-  staff (from CourseAccessRole), ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
+  staff (from CourseAccessRole), ``console`` for institution administrators, ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
   page and the LMS/Studio header so navigation is role-aware without anyone self-declaring a role.
 GET  /edulage/api/v1/runs/?course_id=...   (public)
   Enrolment policy (admission / open_free / open_paid) and price per run, for edulage.org CTAs.
@@ -52,6 +52,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .. import identity
+from ..console import administered_institutions
 from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
 
 User = get_user_model()
@@ -377,12 +378,13 @@ class MeView(APIView):
         admin = bool(user.is_superuser or user.is_staff)
         studio = admin or creator or bool(roles & STUDIO_ROLES)
         teach = admin or bool(roles & TEACH_ROLES)
+        console = bool(administered_institutions(user))
         return Response({
             "username": user.username,
             "name": user.profile.name if hasattr(user, "profile") else "",
             "email": user.email,
             "institutions": institutions,
-            "doors": {"learn": True, "studio": studio, "teach": teach, "admin": admin},
+            "doors": {"learn": True, "studio": studio, "teach": teach, "console": console, "admin": admin},
             "is_staff": studio or teach or admin,
         })
 

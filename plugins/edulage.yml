@@ -12,6 +12,11 @@ config:
     PAYSTACK_SECRET_KEY: ""
     PAYSTACK_PUBLIC_KEY: ""
     BILLING_EMAIL: billing@edulage.org
+    # Institution console → IdP admin client (infra/keycloak/create-console-client.py prints the secret;
+    # set it on the host with `tutor config save --set EDULAGE_KC_CLIENT_SECRET=...`, never in this repo).
+    KC_URL: http://edulage-keycloak:8080
+    KC_CLIENT_ID: edulage-lms-console
+    KC_CLIENT_SECRET: ""
 patches:
   openedx-common-settings: |
     # EduLage branding (runtime; images served from /media/brand on the LMS)
@@ -67,6 +72,11 @@ patches:
     EDULAGE_PAYSTACK_SECRET_KEY = "{{ EDULAGE_PAYSTACK_SECRET_KEY }}"
     EDULAGE_PAYSTACK_PUBLIC_KEY = "{{ EDULAGE_PAYSTACK_PUBLIC_KEY }}"
     EDULAGE_BILLING_EMAIL = "{{ EDULAGE_BILLING_EMAIL }}"
+    # Institution console (edulage_platform.console) writes staff roles to the IdP
+    EDULAGE_KC_URL = "{{ EDULAGE_KC_URL }}"
+    EDULAGE_KC_CLIENT_ID = "{{ EDULAGE_KC_CLIENT_ID }}"
+    EDULAGE_KC_CLIENT_SECRET = "{{ EDULAGE_KC_CLIENT_SECRET }}"
+    EDULAGE_STUDIO_URL = "https://{{ CMS_HOST }}"
     ALLOWED_HOSTS += {{ EDULAGE_TENANT_HOSTS }}
     CSRF_TRUSTED_ORIGINS += ["https://" + h for h in {{ EDULAGE_TENANT_HOSTS }}]
     # eox-tenant (installed via OPENEDX_EXTRA_PIP_REQUIREMENTS, self-registers as a Django plugin).

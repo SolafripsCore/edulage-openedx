@@ -112,6 +112,9 @@ class IdentityAudit(models.Model):
         ("suspended", "Account suspended"),
         ("reactivated", "Account reactivated"),
         ("support_lookup", "OEC support looked up a learner"),
+        ("invited", "Staff invitation sent"),
+        ("invite_revoked", "Staff invitation withdrawn"),
+        ("invite_accepted", "Staff invitation accepted"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -277,3 +280,67 @@ class Payment(models.Model):
     @property
     def amount_minor(self):
         return int(round(self.amount * 100))
+
+
+class StaffInvitation(models.Model):
+    """
+    An institution administrator's invitation for someone to hold a staff role at their
+    institution. Accepted from the e-mailed link by a signed-in account whose e-mail matches;
+    acceptance writes the role to the identity provider and mirrors it onto Open edX.
+    """
+
+    ORG_ROLES = [
+        ("institution_admin", "Institution administrator"),
+        ("programme_admin", "Programme administrator"),
+        ("course_author", "Course author"),
+        ("trainer", "Trainer"),
+    ]
+    COURSE_ROLES = [
+        ("instructor", "Instructor"),
+        ("teaching_assistant", "Teaching assistant"),
+    ]
+    ROLE_CHOICES = ORG_ROLES + COURSE_ROLES
+    EXPIRY_DAYS = 14
+
+    token = models.CharField(max_length=64, unique=True)
+    email = models.EmailField(db_index=True)
+    institution = models.CharField(max_length=64, db_index=True, help_text="Open edX org short name")
+    role = models.CharField(max_length=32, choices=ROLE_CHOICES)
+    course_id = models.CharField(max_length=255, blank=True, help_text="Course run for instructor / TA roles")
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+")
+    created = models.DateTimeField(auto_now_add=True)
+    accepted = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    revoked = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.email} → {self.claim} [{self.state}]"
+
+    @property
+    def claim(self):
+        return f"{self.role}:{self.course_id or self.institution}"
+
+    @property
+    def role_label(self):
+        return dict(self.ROLE_CHOICES).get(self.role, self.role)
+
+    @property
+    def expires(self):
+        from datetime import timedelta  # pylint: disable=import-outside-toplevel
+
+        return self.created + timedelta(days=self.EXPIRY_DAYS)
+
+    @property
+    def state(self):
+        from django.utils import timezone  # pylint: disable=import-outside-toplevel
+
+        if self.accepted:
+            return "accepted"
+        if self.revoked:
+            return "revoked"
+        if timezone.now() > self.expires:
+            return "expired"
+        return "pending"

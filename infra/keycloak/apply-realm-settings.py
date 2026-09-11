@@ -96,6 +96,15 @@ for attr in profile["attributes"]:
     if attr["name"] in ("firstName", "lastName", "email"):
         attr["required"] = {"roles": ["user"]}
         attr["permissions"] = {"view": ["admin", "user"], "edit": ["admin", "user"]}
+# edulage_roles is written only by administrators / the LMS console service account, never by the user.
+if not any(a["name"] == "edulage_roles" for a in profile["attributes"]):
+    profile["attributes"].append({
+        "name": "edulage_roles",
+        "displayName": "EduLage roles",
+        "multivalued": True,
+        "permissions": {"view": ["admin"], "edit": ["admin"]},
+        "validations": {"length": {"max": 255}},
+    })
 call("PUT", "/users/profile", profile)
 
 realm = call("GET", "")
