@@ -10,7 +10,9 @@ Request-time enforcement that Open edX does not provide on its own:
   otherwise forward to the authn MFE form with a "Sign in with EduLage" button) send anonymous
   visitors straight to the EduLage IdP, so there is one sign-in page for learners, institution
   staff and EduLage admins alike. Studio reaches the same path via its LMS OAuth2 hop.
-  ``?el_password=1`` keeps the stock form reachable for the platform superuser.
+  ``?el_password=1`` keeps the stock form reachable for the platform superuser;
+* stock "Page not found" / "Server error" pages (Open edX branding, marketing navigation) are
+  replaced by the branded status pages for HTML requests.
 
 Installed after ``AuthenticationMiddleware`` and before the view (see settings.common).
 """
@@ -34,6 +36,8 @@ STAFF_SESSION_KEY = "edulage_staff"
 PASSWORD_LOGIN_PARAM = "el_password"
 LOGIN_PATHS = {"/login", "/signin"}
 REGISTER_PATHS = {"/register", "/signup", "/create_account"}
+ERROR_PAGES = {404: "not-found", 500: "error"}
+STOCK_PAGE_MARKER = b"openedx-release-line"
 
 
 def _jwt_cookie_names():
@@ -77,7 +81,16 @@ class AccountStatusMiddleware:
             return sso
         response = self.get_response(request)
         self._clamp_staff_session(request)
-        return response
+        return self._brand_error_page(request, response)
+
+    def _brand_error_page(self, request, response):
+        if response.status_code not in ERROR_PAGES or not _wants_html(request):
+            return response
+        if not response.get("Content-Type", "").startswith("text/html") or response.streaming:
+            return response
+        if STOCK_PAGE_MARKER not in response.content:
+            return response
+        return render_status(request, ERROR_PAGES[response.status_code])
 
     def _refuse_if_suspended(self, request):
         user = request.user
