@@ -28,6 +28,10 @@ GET  /edulage/api/v1/dashboard/courses/   (learner, session auth)
   Listing metadata for the caller's own enrolments, used by the "My learning" cards.
 GET  /edulage/api/v1/dashboard/applications/   (learner, session auth)
   The caller's applications/admissions with status, for the "Applications" panel.
+GET  /edulage/api/v1/me/   (session auth; 401 when anonymous)
+  Who the caller is and which "doors" to show: learner always, ``studio``/``teach`` for institution
+  staff (from CourseAccessRole), ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
+  page and the LMS/Studio header so navigation is role-aware without anyone self-declaring a role.
 GET  /edulage/api/v1/runs/?course_id=...   (public)
   Enrolment policy (admission / open_free / open_paid) and price per run, for edulage.org CTAs.
 
@@ -350,6 +354,37 @@ class PublicRunsView(APIView):
             data = _serialize_listing(k, listings.get(k))
             runs.append({f: data[f] for f in PUBLIC_RUN_FIELDS})
         return Response({"runs": runs})
+
+
+STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}
+TEACH_ROLES = {"staff", "instructor", "limited_staff", "beta_testers", "data_researcher"}
+
+
+class MeView(APIView):
+    """Role-aware navigation facts for the caller; roles are those granted in the LMS, never claimed."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from common.djangoapps.student.models import CourseAccessRole  # pylint: disable=import-outside-toplevel
+
+        user = request.user
+        access = list(CourseAccessRole.objects.filter(user=user).values_list("role", "org", "course_id"))
+        roles = {r for r, _, _ in access}
+        institutions = sorted({org for _, org, _ in access if org})
+        creator = user.groups.filter(name=identity.COURSE_CREATOR_GROUP).exists()
+        admin = bool(user.is_superuser or user.is_staff)
+        studio = admin or creator or bool(roles & STUDIO_ROLES)
+        teach = admin or bool(roles & TEACH_ROLES)
+        return Response({
+            "username": user.username,
+            "name": user.profile.name if hasattr(user, "profile") else "",
+            "email": user.email,
+            "institutions": institutions,
+            "doors": {"learn": True, "studio": studio, "teach": teach, "admin": admin},
+            "is_staff": studio or teach or admin,
+        })
 
 
 class DashboardApplicationsView(APIView):
