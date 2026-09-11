@@ -544,3 +544,54 @@ class PublicInstitutionView(APIView):
             "logo": _absolute_media_url(org.logo.url) if org.logo else "",
             "courses": courses,
         })
+
+
+class CredentialVerifyThrottle(AnonRateThrottle):
+    rate = "60/hour"
+
+
+class PublicCredentialView(APIView):
+    """
+    Public, unauthenticated credential check read by edulage.org/verify/<id>: the institution
+    awards and issues the credential, EduLage records and verifies it. The identifier is the
+    certificate's ``verify_uuid`` (printed on the certificate); the response carries only what
+    the public certificate page already shows. 404 for unknown or never-issued identifiers.
+    GET /edulage/api/v1/credentials/<uuid>/
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+    throttle_classes = (CredentialVerifyThrottle,)
+
+    def get(self, request, uuid):
+        from lms.djangoapps.certificates.data import CertificateStatuses  # pylint: disable=import-outside-toplevel
+        from lms.djangoapps.certificates.models import GeneratedCertificate  # pylint: disable=import-outside-toplevel
+        from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-outside-toplevel
+
+        from ..certificates import listing_context  # pylint: disable=import-outside-toplevel
+
+        cert = GeneratedCertificate.objects.filter(verify_uuid=uuid.lower()).select_related("user").first()
+        if cert is None or not cert.verify_uuid:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if cert.status == CertificateStatuses.downloadable:
+            state = "valid"
+        elif cert.status in (CertificateStatuses.unavailable, CertificateStatuses.invalidated):
+            state = "revoked"
+        else:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        overview = CourseOverview.get_from_id(cert.course_id)
+        listing = listing_context(cert.course_id)
+        institution = listing.get("institution_name") or cert.course_id.org
+        return Response({
+            "id": cert.verify_uuid,
+            "status": state,
+            "learner_name": cert.name or cert.user.profile.name,
+            "course_id": str(cert.course_id),
+            "course_title": overview.display_name,
+            "institution": institution,
+            "institution_code": cert.course_id.org,
+            "programme_title": listing.get("programme_title", ""),
+            "credential": listing.get("credential") or "Certificate",
+            "issued_on": (cert.modified_date or cert.created_date).date().isoformat(),
+            "certificate_url": f"{settings.LMS_ROOT_URL}/certificates/{cert.verify_uuid}",
+        })

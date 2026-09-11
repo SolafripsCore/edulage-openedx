@@ -75,6 +75,30 @@ PAGES = {
         "primary": ("Try signing in again", "{login_url}"),
         "secondary": ("Contact learner support", f"{SITE_URL}/help"),
     },
+    "not-found": {
+        "status": 404,
+        "eyebrow": "Page not found",
+        "title": "We couldn't find that page",
+        "body": (
+            "The link may be out of date, or the course or page may have moved. Your enrolments and "
+            "progress are unaffected."
+        ),
+        "steps": [],
+        "primary": ("Go to My learning", "/dashboard"),
+        "secondary": ("Browse programmes", f"{SITE_URL}/programmes"),
+    },
+    "error": {
+        "status": 500,
+        "eyebrow": "Something went wrong",
+        "title": "We couldn't load this page",
+        "body": (
+            "A temporary problem stopped this page from loading. Your work is saved; please try again "
+            "in a moment. If it keeps happening, contact learner support."
+        ),
+        "steps": [],
+        "primary": ("Go to My learning", "/dashboard"),
+        "secondary": ("Contact learner support", f"{SITE_URL}/help"),
+    },
 }
 
 
