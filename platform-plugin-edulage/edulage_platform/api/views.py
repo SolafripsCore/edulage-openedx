@@ -97,6 +97,11 @@ class IntegrationView(APIView):
             return None, None, Response({"error": "sub (or username/email) is required"}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
             return None, None, Response({"error": "unknown user"}, status=status.HTTP_404_NOT_FOUND)
+        except User.MultipleObjectsReturned:
+            return None, None, Response(
+                {"error": "email matches several accounts; use sub or username"},
+                status=status.HTTP_409_CONFLICT,
+            )
         return user, identity.sub_for_user(user), None
 
 
@@ -259,13 +264,13 @@ class SupportLearnerView(APIView):
             {"course_id": str(e.course_id), "mode": e.mode, "is_active": e.is_active, "created": e.created.isoformat()}
             for e in CourseEnrollment.objects.filter(user=learner) if in_scope(e.course_id)
         ]
-        if not enrolments:
-            # learner exists but has nothing in this officer's scope: indistinguishable from unknown
-            return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
         admissions = [
             {"course_id": str(a.course_key), "status": a.status, "institution": a.institution}
             for a in Admission.objects.filter(user=learner) if in_scope(a.course_key)
         ]
+        if not enrolments and not admissions:
+            # learner exists but has nothing in this officer's scope: indistinguishable from unknown
+            return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
         IdentityAudit.objects.create(
             user=learner, event="support_lookup", actor=request.user.username, detail="enrolment summary",
             edulage_sub=identity.sub_for_user(learner) or "",
