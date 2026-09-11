@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Institution console · {{ org_name }} · {{ platform_name }}</title>
+  <link rel="icon" href="{{ brand_url }}/favicon.ico">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/inter-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/plusjakartasans-latin.woff2">
+  {% include "edulage_platform/_brand_style.html" %}
+  <style>
+    main { align-items: flex-start; padding: 40px 0 64px; }
+    .console { display: grid; gap: 24px; }
+    @media (min-width: 960px) { .console { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } }
+    .panel { background: var(--white); border: 1px solid var(--line); border-radius: 1rem; padding: 28px; box-shadow: 0 18px 45px rgba(6, 16, 52, 0.06); }
+    .panel h2 { margin: 0 0 6px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-size: 1.125rem; font-weight: 800; color: var(--navy-800); }
+    .panel p.lead { font-size: 0.9375rem; margin-bottom: 18px; }
+    .titlebar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+    .titlebar h1 { margin: 0; }
+    .titlebar p { font-size: 0.9375rem; }
+    .switch { display: flex; gap: 8px; flex-wrap: wrap; }
+    .switch a { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--white); text-decoration: none; font-size: 0.8125rem; font-weight: 600; color: var(--ink-600); }
+    .switch a[aria-current] { background: var(--navy-800); border-color: var(--navy-800); color: var(--white); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-400); font-weight: 700; }
+    td .sub { display: block; color: var(--ink-400); font-size: 0.8125rem; }
+    .tag { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 8px; border-radius: 999px; background: rgba(9, 24, 79, 0.06); color: var(--navy-700); font-size: 0.75rem; font-weight: 600; }
+    .tag.teal { background: rgba(16, 165, 133, 0.1); color: var(--teal-600); }
+    .empty { padding: 20px 8px; color: var(--ink-400); font-size: 0.9rem; }
+    form.inline { display: inline; }
+    .link-btn { background: none; border: 0; padding: 0; color: var(--teal-600); font: inherit; font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
+    .link-btn.danger { color: #b42318; }
+    label { display: block; margin: 14px 0 6px; font-size: 0.8125rem; font-weight: 700; color: var(--ink-900); }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 0.5rem; font: inherit; font-size: 0.9375rem; color: var(--ink-900); background: var(--white); }
+    input:focus, select:focus { outline: 2px solid var(--teal-500); outline-offset: 1px; border-color: var(--teal-500); }
+    .hint { margin-top: 6px; font-size: 0.8125rem; color: var(--ink-400); }
+    .btn-block { width: 100%; margin-top: 18px; border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+    .flash { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
+    .flash li { padding: 12px 16px; border-radius: 0.75rem; font-size: 0.9rem; border: 1px solid var(--line); background: var(--white); color: var(--ink-900); }
+    .flash li.success { border-color: rgba(16, 165, 133, 0.4); background: rgba(16, 165, 133, 0.08); }
+    .flash li.error { border-color: rgba(180, 35, 24, 0.35); background: rgba(180, 35, 24, 0.06); }
+    .flash li.warning { border-color: rgba(181, 71, 8, 0.35); background: rgba(181, 71, 8, 0.06); }
+    .notice { padding: 12px 16px; border-radius: 0.75rem; background: rgba(9, 24, 79, 0.05); font-size: 0.875rem; color: var(--ink-600); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="{{ site_url }}" aria-label="EduLage home"><img src="{{ brand_url }}/images/edulage-logo.png" alt="EduLage"></a>
+      <nav style="display:flex;gap:20px;">
+        {% if studio_url %}<a class="back" href="{{ studio_url }}">Studio</a>{% endif %}
+        <a class="back" href="/dashboard">My learning</a>
+        <a class="back" href="/logout">Sign out</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="titlebar">
+        <div>
+          <span class="eyebrow">Institution console</span>
+          <h1>{{ org_name }}</h1>
+          <p>People who hold staff roles at your institution on EduLage, and pending invitations.</p>
+        </div>
+        {% if institutions|length > 1 %}
+        <nav class="switch" aria-label="Institution">
+          {% for code, name in institutions %}<a href="{% url 'edulage:console-org' org=code %}"{% if code == org %} aria-current="page"{% endif %}>{{ name }}</a>{% endfor %}
+        </nav>
+        {% endif %}
+      </div>
+
+      {% if messages %}
+      <ul class="flash" role="status">
+        {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+
+      <div class="console">
+        <div style="display:grid;gap:24px;">
+          <section class="panel" aria-labelledby="members-title">
+            <h2 id="members-title">Staff</h2>
+            <p class="lead">Roles decide what each person sees: administrators and authors get Studio; instructors and teaching assistants get their course's teaching tools.</p>
+            {% if members %}
+            <table>
+              <thead><tr><th>Person</th><th>Roles</th><th></th></tr></thead>
+              <tbody>
+                {% for m in members %}
+                <tr>
+                  <td><b>{{ m.name }}</b><span class="sub">{{ m.email }}{% if not m.active %} · suspended{% endif %}</span></td>
+                  <td>{% for r in m.roles %}<span class="tag{% if 'administrator' in r %} teal{% endif %}">{{ r }}</span>{% endfor %}</td>
+                  <td style="text-align:right;white-space:nowrap;">
+                    {% if m.username != me %}
+                    <form class="inline" method="post" action="{% url 'edulage:console-revoke-member' org=org username=m.username %}" onsubmit="return confirm('Remove all of {{ m.name|escapejs }}\u2019s roles at {{ org_name|escapejs }}?');">
+                      {% csrf_token %}<button class="link-btn danger" type="submit">Remove</button>
+                    </form>
+                    {% else %}<span class="sub">you</span>{% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<p class="empty">No staff roles granted yet.</p>{% endif %}
+          </section>
+
+          <section class="panel" aria-labelledby="invites-title">
+            <h2 id="invites-title">Pending invitations</h2>
+            <p class="lead">Invitations expire after {{ expiry_days }} days and can only be accepted by an account signed in with the invited e-mail.</p>
+            {% if invitations %}
+            <table>
+              <thead><tr><th>E-mail</th><th>Role</th><th>Sent</th><th></th></tr></thead>
+              <tbody>
+                {% for i in invitations %}
+                <tr>
+                  <td>{{ i.email }}</td>
+                  <td>{{ i.role_label }}{% if i.course_id %}<span class="sub">{{ i.course_id }}</span>{% endif %}</td>
+                  <td>{{ i.created|date:"j M Y" }}<span class="sub">expires {{ i.expires|date:"j M" }}</span></td>
+                  <td style="text-align:right;white-space:nowrap;">
+                    <form class="inline" method="post" action="{% url 'edulage:console-revoke-invitation' org=org pk=i.pk %}">
+                      {% csrf_token %}<button class="link-btn danger" type="submit">Withdraw</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<p class="empty">No pending invitations.</p>{% endif %}
+          </section>
+        </div>
+
+        <aside class="panel" aria-labelledby="invite-title">
+          <h2 id="invite-title">Invite a colleague</h2>
+          <p class="lead">They receive an e-mail link, sign in or create an EduLage account with that address, and the role is active immediately. Staff roles require an authenticator app at sign-in.</p>
+          {% if idp_ready %}
+          <form method="post" action="{% url 'edulage:console-invite' org=org %}">
+            {% csrf_token %}
+            <label for="inv-email">E-mail address</label>
+            <input id="inv-email" name="email" type="email" required autocomplete="off" placeholder="name@institution.edu">
+            <label for="inv-role">Role</label>
+            <select id="inv-role" name="role" required>
+              <optgroup label="Institution-wide">
+                {% for value, label in org_roles %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+              </optgroup>
+              <optgroup label="One course run">
+                {% for value, label in course_roles %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+              </optgroup>
+            </select>
+            <label for="inv-course">Course run <span style="color:var(--ink-400);font-weight:400;">(instructor / teaching assistant only)</span></label>
+            <select id="inv-course" name="course_id">
+              <option value="">—</option>
+              {% for cid, title in course_runs %}<option value="{{ cid }}">{{ title }} · {{ cid }}</option>{% endfor %}
+            </select>
+            <p class="hint">Institution administrators can manage staff here; programme administrators, authors and trainers get Studio for this institution only.</p>
+            <button class="btn btn-primary btn-block" type="submit">Send invitation</button>
+          </form>
+          {% else %}
+          <p class="notice">Invitations are not enabled on this environment. Contact EduLage support to have roles granted.</p>
+          {% endif %}
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p style="color: inherit; font-size: inherit;">© {% now "Y" %} EduLage.org. All rights reserved.</p>
+      <nav aria-label="Legal">
+        <a href="{{ site_url }}/privacy">Privacy</a>
+        <a href="{{ site_url }}/terms">Terms</a>
+        <a href="{{ site_url }}/help">Help &amp; support</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -8,7 +8,7 @@ Learners are identified by the immutable EduLage user id (OIDC ``sub``). ``usern
 
 POST /edulage/api/v1/admissions/
   {"sub": "...", "course_id": "course-v1:ORG+CODE+RUN", "application_id": "APP-1",
-   "institution": "ORG", "action": "admit" | "withdraw" | "defer"}
+   "institution": "ORG", "action": "submit" | "review" | "admit" | "decline" | "withdraw" | "defer"}
   -> 200 applied (learner has an LMS account, enrolment synced)
   -> 202 pending (no LMS account yet; applied automatically at first SSO login)
 GET  /edulage/api/v1/admissions/?sub=...&course_id=...
@@ -20,6 +20,20 @@ POST /edulage/api/v1/users/status/   {"sub": "...", "status": "suspended" | "act
 
 GET  /edulage/api/v1/support/learners/?username=...   (OEC support officer, session auth)
   Enrolment/progress summary for a learner, limited to the officer's SupportScope.
+
+PUT  /edulage/api/v1/listings/   {"listings": [{"course_id": "...", "institution": "ORG", "institution_name": "...",
+  "classification": "degree", "credential": "MSc", "programme_title": "...", ...}]}
+  Presentation metadata from the EduLage catalogue for course runs (upsert, idempotent).
+GET  /edulage/api/v1/dashboard/courses/   (learner, session auth)
+  Listing metadata for the caller's own enrolments, used by the "My learning" cards.
+GET  /edulage/api/v1/dashboard/applications/   (learner, session auth)
+  The caller's applications/admissions with status, for the "Applications" panel.
+GET  /edulage/api/v1/me/   (session auth; 401 when anonymous)
+  Who the caller is and which "doors" to show: learner always, ``studio``/``teach`` for institution
+  staff (from CourseAccessRole), ``console`` for institution administrators, ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
+  page and the LMS/Studio header so navigation is role-aware without anyone self-declaring a role.
+GET  /edulage/api/v1/runs/?course_id=...   (public)
+  Enrolment policy (admission / open_free / open_paid) and price per run, for edulage.org CTAs.
 
 POST/PUT are idempotent: repeating a call converges on the same state, so EduLage may retry on
 timeouts without side effects.
@@ -35,15 +49,20 @@ from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from .. import identity
-from ..models import Admission, IdentityAudit, ManagedRole, SupportScope
+from ..console import administered_institutions
+from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
 
 User = get_user_model()
 
 ACTION_TO_STATUS = {
+    "submit": Admission.STATUS_SUBMITTED,
+    "review": Admission.STATUS_UNDER_REVIEW,
     "admit": Admission.STATUS_ADMITTED,
+    "decline": Admission.STATUS_DECLINED,
     "withdraw": Admission.STATUS_WITHDRAWN,
     "defer": Admission.STATUS_DEFERRED,
 }
@@ -89,6 +108,7 @@ def _serialize(adm):
         "application_id": adm.application_id,
         "institution": adm.institution,
         "status": adm.status,
+        "status_label": adm.get_status_display(),
         "pending": adm.is_pending,
         "modified": adm.modified.isoformat(),
     }
@@ -251,3 +271,199 @@ class SupportLearnerView(APIView):
             edulage_sub=identity.sub_for_user(learner) or "",
         )
         return Response({"username": learner.username, "enrolments": enrolments, "admissions": admissions})
+
+
+LISTING_FIELDS = (
+    "institution", "institution_name", "institution_logo", "institution_url", "programme_title", "programme_url",
+    "classification", "credential", "delivery_mode", "enrolment_policy", "price", "currency",
+)
+PUBLIC_RUN_FIELDS = ("course_id", "enrolment_policy", "price", "currency", "institution", "institution_name", "classification")
+
+
+def _absolute_media_url(url):
+    return url if url.startswith("http") else f"{settings.LMS_ROOT_URL}{url}"
+
+
+def _serialize_listing(course_key, listing, org=None):
+    if listing is not None:
+        data = listing.as_dict()
+    else:
+        data = {f: "" for f in LISTING_FIELDS}
+        data.update(
+            enrolment_policy=CourseListing.POLICY_ADMISSION,
+            price="0.00",
+            currency="NGN",
+            institution=course_key.org,
+            institution_name=(org.name if org else course_key.org),
+            institution_logo=_absolute_media_url(org.logo.url) if org and org.logo else "",
+            classification="",
+            classification_label="Course",
+        )
+    data["course_id"] = str(course_key)
+    return data
+
+
+class ListingsView(IntegrationView):
+    def put(self, request):
+        items = request.data.get("listings")
+        if not isinstance(items, list):
+            return Response({"error": "listings must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        valid = {c for c, _ in CourseListing.CLASSIFICATIONS}
+        parsed = []
+        for item in items:
+            if not isinstance(item, dict):
+                return Response({"error": "each listing must be an object"}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                course_key = CourseKey.from_string(item["course_id"])
+            except (KeyError, TypeError, InvalidKeyError):
+                return Response({"error": "course_id is required and must be valid"}, status=status.HTTP_400_BAD_REQUEST)
+            if item.get("classification", "short") not in valid:
+                return Response({"error": f"unknown classification for {course_key}"}, status=status.HTTP_400_BAD_REQUEST)
+            if item.get("enrolment_policy", CourseListing.POLICY_ADMISSION) not in {p for p, _ in CourseListing.POLICIES}:
+                return Response({"error": f"unknown enrolment_policy for {course_key}"}, status=status.HTTP_400_BAD_REQUEST)
+            defaults = {f: item[f] for f in LISTING_FIELDS if f in item}
+            defaults.setdefault("institution", course_key.org)
+            defaults.setdefault("institution_name", course_key.org)
+            parsed.append((course_key, defaults))
+        result = []
+        with transaction.atomic():
+            for course_key, defaults in parsed:
+                listing, _ = CourseListing.objects.update_or_create(course_key=course_key, defaults=defaults)
+                result.append(_serialize_listing(course_key, listing))
+        return Response({"listings": result})
+
+
+class PublicRunsView(APIView):
+    """
+    Public, unauthenticated: enrolment policy and price for course runs, read by edulage.org
+    programme pages to render "Enrol now" / "Enrol now — ₦X" / "Apply".
+    GET /edulage/api/v1/runs/?course_id=...&course_id=...   (max 50)
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+
+    def get(self, request):
+        keys = []
+        for raw in request.query_params.getlist("course_id")[:50]:
+            try:
+                keys.append(CourseKey.from_string(raw))
+            except InvalidKeyError:
+                continue
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        runs = []
+        for k in keys:
+            data = _serialize_listing(k, listings.get(k))
+            runs.append({f: data[f] for f in PUBLIC_RUN_FIELDS})
+        return Response({"runs": runs})
+
+
+class PartnerRequestThrottle(AnonRateThrottle):
+    rate = "5/hour"
+
+
+class PartnerRequestView(APIView):
+    """
+    Public, unauthenticated: an institution's request to join EduLage from the edulage.org form.
+    POST /edulage/api/v1/partner-requests/  → 202 {"status": "received"|"already_pending"}
+    Nothing is provisioned here; an EduLage administrator reviews at /edulage/admin/partners/.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+    throttle_classes = (PartnerRequestThrottle,)
+    REQUIRED = ("institution_name", "contact_name", "contact_email")
+    LIMITS = {"institution_name": 160, "short_name": 16, "country": 80, "website": 200, "contact_name": 120, "contact_email": 254, "contact_role": 120, "message": 4000}
+
+    def post(self, request):
+        from .. import partners  # pylint: disable=import-outside-toplevel
+
+        data = request.data if isinstance(request.data, dict) else {}
+        if data.get("company"):  # honeypot field, hidden on the form
+            return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
+        clean = {k: str(data.get(k) or "").strip() for k in self.LIMITS}
+        problems = [k for k in self.REQUIRED if not clean[k]] + [k for k, v in clean.items() if len(v) > self.LIMITS[k]]
+        if "@" not in clean["contact_email"] or "." not in clean["contact_email"].rpartition("@")[2]:
+            problems.append("contact_email")
+        if clean["website"] and not clean["website"].startswith(("http://", "https://")):
+            clean["website"] = "https://" + clean["website"]
+        if clean["short_name"] and not partners.CODE_RE.match(clean["short_name"].upper()):
+            problems.append("short_name")
+        if problems:
+            return Response({"error": "invalid", "fields": sorted(set(problems))}, status=status.HTTP_400_BAD_REQUEST)
+        req, created = partners.record_request(clean)
+        return Response({"status": "received" if created else "already_pending", "id": req.pk}, status=status.HTTP_202_ACCEPTED)
+
+
+STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}
+TEACH_ROLES = {"staff", "instructor", "limited_staff", "beta_testers", "data_researcher"}
+
+
+class MeView(APIView):
+    """Role-aware navigation facts for the caller; roles are those granted in the LMS, never claimed."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from common.djangoapps.student.models import CourseAccessRole  # pylint: disable=import-outside-toplevel
+
+        user = request.user
+        access = list(CourseAccessRole.objects.filter(user=user).values_list("role", "org", "course_id"))
+        roles = {r for r, _, _ in access}
+        institutions = sorted({org for _, org, _ in access if org})
+        creator = user.groups.filter(name=identity.COURSE_CREATOR_GROUP).exists()
+        admin = bool(user.is_superuser or user.is_staff)
+        studio = admin or creator or bool(roles & STUDIO_ROLES)
+        teach = admin or bool(roles & TEACH_ROLES)
+        console = bool(administered_institutions(user))
+        return Response({
+            "username": user.username,
+            "name": user.profile.name if hasattr(user, "profile") else "",
+            "email": user.email,
+            "institutions": institutions,
+            "doors": {"learn": True, "studio": studio, "teach": teach, "console": console, "admin": admin},
+            "is_staff": studio or teach or admin,
+        })
+
+
+class DashboardApplicationsView(APIView):
+    """The caller's own applications/admissions with catalogue metadata, for the My learning panel."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        admissions = list(Admission.objects.filter(user=request.user).order_by("-modified"))
+        keys = [a.course_key for a in admissions]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        items = []
+        for adm in admissions:
+            item = _serialize_listing(adm.course_key, listings.get(adm.course_key), orgs.get(adm.course_key.org))
+            item.update(
+                application_id=adm.application_id,
+                status=adm.status,
+                status_label=adm.get_status_display(),
+                modified=adm.modified.isoformat(),
+            )
+            items.append(item)
+        return Response({"applications": items})
+
+
+class DashboardCoursesView(APIView):
+    """Listing metadata for the caller's own enrolments; anything else is not disclosed."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from common.djangoapps.student.models import CourseEnrollment  # pylint: disable=import-outside-toplevel
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        keys = [e.course_id for e in CourseEnrollment.enrollments_for_user(request.user)]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        return Response({"courses": [_serialize_listing(k, listings.get(k), orgs.get(k.org)) for k in keys]})

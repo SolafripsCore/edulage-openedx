@@ -1,0 +1,70 @@
+{% extends 'ace_common/edx_ace/common/base_body.html' %}
+{% load i18n %}
+{% load ace %}
+
+{% block preview_text %}{% blocktrans %}Payment received for {{ course_title }} — you are enrolled. Reference {{ reference }}.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding-bottom:14px;">
+      <span style="display:inline-block;padding:4px 10px;border-radius:999px;background-color:#e7f6f2;color:#0e8e73;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">{% trans "Payment receipt" %}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:26px;line-height:32px;font-weight:800;letter-spacing:-0.02em;color:#09184f;padding-bottom:16px;">
+      {% blocktrans %}Thank you, {{ learner_name }}.{% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#475569;padding-bottom:20px;">
+      {% blocktrans trimmed %}
+      Your payment for <b style="color:#0b1220;">{{ course_title }}</b> has been received and you are now enrolled.
+      The course is waiting in My learning. Keep this e-mail as your receipt.
+      {% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td bgcolor="#09184f" style="background-color:#09184f;padding:16px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#2fbd9e;padding-bottom:4px;">{% trans "Amount paid" %}</td>
+                <td align="right" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#cbd5e1;">{{ reference }}</td>
+              </tr>
+              <tr>
+                <td colspan="2" style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:28px;line-height:34px;font-weight:800;color:#ffffff;">{{ currency }} {{ amount }}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#f7f9fc" style="background-color:#f7f9fc;padding:14px 20px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:22px;color:#475569;">
+            <b style="color:#0b1220;">{% trans "Course" %}:</b> {{ course_title }}<br>
+            <b style="color:#0b1220;">{% trans "Institution" %}:</b> {{ institution }}<br>
+            <b style="color:#0b1220;">{% trans "Paid" %}:</b> {{ paid_at }}{% if channel %} &middot; {{ channel }}{% endif %}<br>
+            <b style="color:#0b1220;">{% trans "Runs" %}:</b> {% if course_start %}{{ course_start }}{% if course_end %} &ndash; {{ course_end }}{% endif %}{% else %}{% trans "Self-paced" %}{% endif %}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      {% with course_cta_url=course_url course_cta_text=_("Start learning") %}
+        {% include 'ace_common/edx_ace/common/return_to_course_cta.html' %}
+      {% endwith %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;color:#475569;padding-top:4px;">
+      {% blocktrans trimmed %}
+      The course fee is set by and payable to {{ institution }}; EduLage processes the payment on its behalf.
+      Billing questions go to <a href="mailto:{{ billing_email }}" style="color:#0e8e73;text-decoration:underline;">{{ billing_email }}</a>.
+      {% endblocktrans %}
+    </td>
+  </tr>
+</table>
+{% endblock %}

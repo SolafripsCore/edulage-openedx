@@ -1,0 +1,18 @@
+{% load i18n %}{% autoescape off %}
+{% blocktrans %}Welcome to EduLage, {{ learner_name }}.{% endblocktrans %}
+
+{% blocktrans trimmed %}Your learning account is ready. One EduLage account gives you a single place for every programme you are admitted to — across universities, colleges, trainers and Open Education Centres in the village.{% endblocktrans %}
+
+{% trans "Here is how it works:" %}
+1. {% trans "Discover" %} — {% blocktrans %}browse programmes and institutions: {{ programmes_url }}{% endblocktrans %}
+2. {% trans "Apply" %} — {% blocktrans %}the institution reviews your application and confirms your admission.{% endblocktrans %}
+3. {% trans "Learn" %} — {% blocktrans %}once admitted, your course appears in My learning; no second login needed.{% endblocktrans %}
+
+{% trans "Open My learning:" %} {{ my_learning_url }}
+
+{% blocktrans trimmed %}You signed in as {{ learner_email }}. Your name, language and notification preferences can be changed any time at {{ account_url }}. If this was not you, tell us at {{ support_email }}.{% endblocktrans %}
+
+--
+{{ platform_name }} — The Global Education Village
+{{ site_url }}
+{% endautoescape %}

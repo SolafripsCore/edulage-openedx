@@ -1,0 +1,294 @@
+## Rendered by Open edX's CertificateRenderStarted filter (edulage_platform.filters.EdulageCertificate).
+## Mako with no default escaping: every variable is passed through `h`.
+<%
+  signatories = (certificate_data or {}).get('signatories', []) if certificate_data else []
+  is_owner = user.is_authenticated and str(user.id) == str(accomplishment_user_id)
+  org_logo = organization_logo if organization_logo else ''
+  course_line = el['institution'] + (' · ' + course_number if course_number else '')
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${el['credential'] | h} · ${accomplishment_copy_course_name | h} · ${accomplishment_copy_name | h} · EduLage</title>
+  <link rel="icon" href="${el['brand_url'] | h}/favicon.ico">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="${el['brand_url'] | h}/fonts/inter-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="${el['brand_url'] | h}/fonts/plusjakartasans-latin.woff2">
+  <style>
+    :root {
+      --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f; --navy-600: #22376f;
+      --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
+      --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
+      --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff;
+    }
+    @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("${el['brand_url'] | h}/fonts/inter-latin.woff2") format("woff2"); }
+    @font-face { font-family: "Plus Jakarta Sans"; font-weight: 200 800; font-display: swap; src: url("${el['brand_url'] | h}/fonts/plusjakartasans-latin.woff2") format("woff2"); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { display: flex; flex-direction: column; min-height: 100vh; font-family: "Inter", Arial, sans-serif; color: var(--ink-900); background: var(--surface); -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .container { width: min(1280px, 100% - 48px); margin: 0 auto; }
+    @media (min-width: 768px) { .container { width: min(1280px, 100% - 64px); } }
+
+    .header { background: var(--white); border-bottom: 1px solid var(--line); }
+    .header .container { display: flex; align-items: center; justify-content: space-between; height: 72px; gap: 16px; }
+    .header img { height: 36px; width: auto; display: block; }
+    .header nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 20px; font-size: 0.875rem; font-weight: 600; color: var(--ink-600); }
+    .header nav a { white-space: nowrap; }
+    .header nav a { text-decoration: none; }
+    .header nav a:hover { color: var(--navy-800); }
+
+    .banner { background: var(--navy-800); color: var(--white); }
+    .banner .container { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; font-size: 0.9375rem; }
+    .banner strong { font-weight: 700; }
+    .banner .actions { display: flex; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; }
+    .btn-teal { background: var(--teal-500); color: var(--white); }
+    .btn-teal:hover { background: var(--teal-600); }
+    .btn-ghost { border-color: rgba(255,255,255,0.35); color: var(--white); background: transparent; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+    .btn-navy { background: var(--navy-800); color: var(--white); }
+    .btn-navy:hover { background: var(--navy-700); }
+    .btn-outline { border-color: var(--line); color: var(--navy-800); background: var(--white); }
+    .btn-outline:hover { border-color: var(--navy-800); }
+
+    main { flex: 1; padding: 48px 0 64px; }
+    .intro { max-width: 720px; margin: 0 auto 32px; text-align: center; }
+    .kicker { margin: 0 0 10px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal-600); }
+    .intro h1 { margin: 0 0 12px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.12; letter-spacing: -0.02em; color: var(--navy-800); }
+    .intro p { margin: 0; color: var(--ink-600); line-height: 1.65; }
+
+    .certificate { position: relative; max-width: 1040px; margin: 0 auto; background: var(--white); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: 0 24px 60px rgba(6, 16, 52, 0.10); overflow: hidden; }
+    .certificate::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 40% at 100% 0%, rgba(16,165,133,0.10), transparent 60%), radial-gradient(50% 40% at 0% 100%, rgba(9,24,79,0.06), transparent 60%); pointer-events: none; }
+    .cert-top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 36px 56px 0; }
+    .cert-top .org img { max-height: 64px; max-width: 220px; width: auto; display: block; }
+    .cert-top .org .name { font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: 1.25rem; color: var(--navy-800); }
+    .cert-top .org .role { margin-top: 4px; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-400); font-weight: 600; }
+    .cert-top .el { text-align: right; }
+    .cert-top .el img { height: 32px; width: auto; display: inline-block; }
+    .cert-top .el .role { margin-top: 6px; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-400); font-weight: 600; }
+    .cert-rule { position: relative; height: 4px; margin: 28px 56px 0; background: linear-gradient(90deg, var(--navy-800), var(--teal-500)); border-radius: 999px; }
+
+    .cert-body { position: relative; padding: 40px 56px 32px; text-align: center; }
+    .cert-body .type { display: inline-flex; padding: 6px 14px; border-radius: 999px; background: rgba(16,165,133,0.1); color: var(--teal-600); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .cert-body .statement { margin: 26px 0 0; font-size: 1rem; color: var(--ink-600); }
+    .cert-body .recipient { margin: 12px 0 0; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.1; letter-spacing: -0.02em; color: var(--navy-800); }
+    .cert-body .achieved { margin: 22px auto 0; max-width: 720px; font-size: 1rem; line-height: 1.65; color: var(--ink-600); }
+    .cert-body .course { margin: 14px 0 0; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: clamp(1.375rem, 2.6vw, 1.875rem); line-height: 1.2; color: var(--navy-800); }
+    .cert-body .course small { display: block; margin-top: 8px; font-family: "Inter", Arial, sans-serif; font-size: 0.875rem; font-weight: 600; color: var(--ink-400); letter-spacing: 0.02em; }
+    .cert-body .programme { margin: 10px 0 0; font-size: 0.9375rem; color: var(--ink-600); }
+    .cert-body .programme a { color: var(--teal-600); font-weight: 600; text-decoration: none; }
+    .meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
+    .meta span { padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-600); background: var(--white); }
+
+    .signatories { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 40px 56px; padding: 8px 56px 0; }
+    .signatory { min-width: 200px; text-align: center; }
+    .signatory img { max-height: 64px; max-width: 220px; display: block; margin: 0 auto 8px; }
+    .signatory .line { height: 1px; background: var(--line); margin: 0 auto 10px; width: 200px; }
+    .signatory .name { font-weight: 700; color: var(--navy-800); font-size: 0.9375rem; }
+    .signatory .title { font-size: 0.8125rem; color: var(--ink-600); margin-top: 2px; }
+
+    .cert-foot { position: relative; display: grid; gap: 24px; padding: 36px 56px 40px; margin-top: 32px; border-top: 1px solid var(--line); background: rgba(247,249,252,0.7); }
+    @media (min-width: 900px) { .cert-foot { grid-template-columns: 1.3fr 1fr; align-items: center; } }
+    .cert-foot h2 { margin: 0 0 6px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-size: 1rem; font-weight: 800; color: var(--navy-800); }
+    .cert-foot p { margin: 0; font-size: 0.9rem; line-height: 1.6; color: var(--ink-600); }
+    .verify-box { border: 1px solid var(--line); border-radius: 0.875rem; background: var(--white); padding: 18px 20px; }
+    .verify-box .label { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-400); }
+    .verify-box .id { margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9375rem; color: var(--ink-900); word-break: break-all; }
+    .verify-box .url { margin-top: 12px; font-size: 0.8125rem; color: var(--ink-600); word-break: break-all; }
+    .verify-box .url a { color: var(--teal-600); font-weight: 600; text-decoration: none; }
+    .verify-box .btn { margin-top: 14px; }
+
+    .about { max-width: 1040px; margin: 40px auto 0; display: grid; gap: 20px; }
+    @media (min-width: 900px) { .about { grid-template-columns: repeat(3, 1fr); } }
+    .about article { background: var(--white); border: 1px solid var(--line); border-radius: 1rem; padding: 24px; }
+    .about h3 { margin: 0 0 8px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: 1rem; color: var(--navy-800); }
+    .about p { margin: 0; font-size: 0.9rem; line-height: 1.6; color: var(--ink-600); }
+    .about a { color: var(--teal-600); font-weight: 600; text-decoration: none; }
+
+    .footer { background: var(--navy-900); color: rgba(255,255,255,0.75); font-size: 0.8125rem; }
+    .footer .container { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 24px 0; }
+    .footer a { color: rgba(255,255,255,0.85); text-decoration: none; margin-left: 18px; }
+    .footer a:hover { color: var(--white); }
+
+    @media (max-width: 767px) {
+      .cert-top, .cert-rule, .cert-body, .signatories, .cert-foot { padding-left: 24px; padding-right: 24px; }
+      .cert-rule { margin-left: 24px; margin-right: 24px; }
+      .cert-top { flex-direction: column; align-items: flex-start; }
+      .cert-top .el { text-align: left; }
+      .header .container { height: auto; padding: 12px 0; flex-wrap: wrap; }
+      .header nav { gap: 6px 14px; font-size: 0.8125rem; }
+      .banner .container { flex-direction: column; align-items: flex-start; }
+      .verify-box .id { font-size: 0.8125rem; }
+    }
+    @media print {
+      @page { size: A4 landscape; margin: 10mm; }
+      body { background: var(--white); }
+      .header, .banner, .about, .footer, .intro { display: none !important; }
+      main { padding: 0; }
+      .container { width: 100%; }
+      .certificate { box-shadow: none; border-color: #cbd5e1; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; max-width: none; font-size: 0.85rem; }
+      .certificate::before { display: none; }
+      .cert-top { padding: 18px 36px 0; }
+      .cert-top .org img { max-height: 44px; }
+      .cert-top .el img { height: 24px; }
+      .cert-rule { margin: 14px 36px 0; height: 3px; }
+      .cert-body { padding: 18px 36px 12px; }
+      .cert-body .statement { margin-top: 14px; font-size: 0.85rem; }
+      .cert-body .recipient { font-size: 2rem; margin-top: 6px; }
+      .cert-body .achieved { margin-top: 10px; font-size: 0.85rem; line-height: 1.4; }
+      .cert-body .course { font-size: 1.25rem; margin-top: 8px; }
+      .cert-body .course small { margin-top: 4px; font-size: 0.75rem; }
+      .meta { margin-top: 12px; }
+      .meta span { padding: 3px 9px; font-size: 0.7rem; }
+      .signatories { padding: 0 36px; gap: 16px 40px; }
+      .signatory img { max-height: 40px; margin-bottom: 4px; }
+      .signatory .line { margin-bottom: 4px; }
+      .cert-foot { margin-top: 14px; padding: 14px 36px 18px; gap: 16px; grid-template-columns: 1.3fr 1fr; align-items: center; background: none; }
+      .cert-foot p { font-size: 0.75rem; line-height: 1.4; }
+      .verify-box { padding: 10px 14px; }
+      .verify-box .url { margin-top: 6px; font-size: 0.7rem; }
+      .btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="${el['site_url'] | h}" aria-label="EduLage home"><img src="${el['brand_url'] | h}/logo.svg" alt="EduLage"></a>
+      <nav>
+        <a href="${el['site_url'] | h}/programmes">Programmes</a>
+        <a href="${el['site_url'] | h}/institutions">Institutions</a>
+        <a href="${el['site_url'] | h}/verify">Verify a credential</a>
+        <a href="/dashboard">My learning</a>
+      </nav>
+    </div>
+  </header>
+
+  % if is_owner:
+  <div class="banner">
+    <div class="container">
+      <div><strong>Congratulations, ${accomplishment_copy_name | h}.</strong> This is your credential page — share the link or print a copy for your records.</div>
+      <div class="actions">
+        <button class="btn btn-teal" type="button" onclick="window.print()">Print or save as PDF</button>
+        <a class="btn btn-ghost" href="/dashboard">Back to My learning</a>
+      </div>
+    </div>
+  </div>
+  % endif
+
+  <main>
+    <div class="container">
+      <div class="intro">
+        <p class="kicker">Institution-issued credential</p>
+        <h1>${el['institution'] | h} recognises the following achievement</h1>
+        <p>${el['awarded_by'] | h}. ${el['recorded_by'] | h}.</p>
+      </div>
+
+      <article class="certificate" aria-label="Certificate">
+        <div class="cert-top">
+          <div class="org">
+            % if org_logo:
+            <img src="${org_logo | h}" alt="${el['institution'] | h}">
+            % else:
+            <div class="name">${el['institution'] | h}</div>
+            % endif
+            <div class="role">Awarding institution</div>
+          </div>
+          <div class="el">
+            <img src="${el['brand_url'] | h}/logo.svg" alt="EduLage">
+            <div class="role">Recorded and verified</div>
+          </div>
+        </div>
+        <div class="cert-rule"></div>
+
+        <div class="cert-body">
+          <span class="type">${el['credential'] | h}</span>
+          <p class="statement">This is to certify that</p>
+          <p class="recipient">${accomplishment_copy_name | h}</p>
+          <p class="achieved">has successfully completed and met the assessment requirements set by ${el['institution'] | h} for</p>
+          <p class="course">
+            ${accomplishment_copy_course_name | h}
+            <small>${course_line | h}</small>
+          </p>
+          % if el['programme_title']:
+          <p class="programme">
+            Part of
+            % if el['programme_url']:
+            <a href="${el['programme_url'] | h}">${el['programme_title'] | h}</a>
+            % else:
+            <strong>${el['programme_title'] | h}</strong>
+            % endif
+          </p>
+          % endif
+          <div class="meta">
+            <span>${el['classification'] | h}</span>
+            % if el['delivery_mode']:
+            <span>${el['delivery_mode'] | h}</span>
+            % endif
+            <span>Issued ${certificate_date_issued | h}</span>
+          </div>
+        </div>
+
+        % if signatories:
+        <div class="signatories">
+          % for s in signatories:
+          <div class="signatory">
+            % if s.get('signature_image_path'):
+            <img src="${s['signature_image_path'] | h}" alt="">
+            % endif
+            <div class="line"></div>
+            <div class="name">${s.get('name', '') | h}</div>
+            <div class="title">${', '.join(x for x in (s.get('title', ''), s.get('organization', '')) if x) | h}</div>
+          </div>
+          % endfor
+        </div>
+        % endif
+
+        <div class="cert-foot">
+          <div>
+            <h2>Awarded and issued by ${el['institution'] | h}</h2>
+            <p>${el['verify_note'] | h}</p>
+            % if el['institution_url']:
+            <p style="margin-top:10px"><a href="${el['institution_url'] | h}" style="color:var(--teal-600);font-weight:600;text-decoration:none">About ${el['institution'] | h} on EduLage</a></p>
+            % endif
+          </div>
+          <div class="verify-box">
+            <div class="label">Credential ID</div>
+            <div class="id">${certificate_id_number | h}</div>
+            <div class="url">Verify at <a href="${certificate_verify_url | h}">${certificate_verify_url | h}</a></div>
+            <a class="btn btn-navy" href="${certificate_verify_url | h}">Verify this credential</a>
+          </div>
+        </div>
+      </article>
+
+      <section class="about" aria-label="About this credential">
+        <article>
+          <h3>Institution-issued</h3>
+          <p>The awarding institution remains the authoritative source for this credential and its academic standing. EduLage does not confer qualifications.</p>
+        </article>
+        <article>
+          <h3>Recorded by EduLage</h3>
+          <p>EduLage holds the credential record and the assessment evidence behind it, so employers and institutions can confirm it without contacting the institution. <a href="${el['site_url'] | h}/quality-and-trust">Verification standards</a></p>
+        </article>
+        <article>
+          <h3>Check its status</h3>
+          <p>Anyone can confirm this credential using its ID at <a href="${el['site_url'] | h}/verify">edulage.org/verify</a>. The result shows valid, amended or revoked status where provided by the institution.</p>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div>&copy; ${el['year'] | h} EduLage · The Global Education Village</div>
+      <div>
+        <a href="${el['site_url'] | h}/terms">Terms</a>
+        <a href="${el['site_url'] | h}/privacy">Privacy</a>
+        <a href="${el['site_url'] | h}/help">Help</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

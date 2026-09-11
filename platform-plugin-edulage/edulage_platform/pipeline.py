@@ -11,30 +11,41 @@ whether an existing LMS account may be linked to the EduLage identity:
 * every decision (link / refusal) is written to ``IdentityAudit``.
 
 Unverified or ambiguous matches are refused rather than silently creating a duplicate or linking
-the wrong account; recovery is manual via Django admin. A refusal returns a redirect to the login
-page instead of raising: the LMS runs views in a transaction (``ATOMIC_REQUESTS``), so raising
-would roll the audit row back.
+the wrong account; recovery is manual via Django admin. A refusal returns a redirect to the
+branded ``/edulage/account/link-refused/`` page instead of raising: the LMS runs views in a
+transaction (``ATOMIC_REQUESTS``), so raising would roll the audit row back.
+
+``refuse_suspended_identity`` runs first and sends identities the IdP reports as not ``active``
+to ``/edulage/account/suspended/`` (a first line of defence; suspension of signed-in users is
+pushed through the status API and enforced by ``AccountStatusMiddleware``).
 
 ``sync_edulage_identity`` runs after the account exists: it projects the compact
 ``edulage_roles`` claim onto Open edX roles (source ``token``), applies admissions that were
 recorded before the learner's first login, and shortens the session for staff.
 """
-from urllib.parse import urlencode
-
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 
-from . import identity
+from . import emails, identity
 from .middleware import STAFF_SESSION_KEY
 from .models import ManagedRole
+from .status import page_url
 
 User = get_user_model()
 
 
 def _refuse(backend, reason, **audit_kwargs):
     identity.audit("link_refused", detail=reason, **audit_kwargs)
-    return HttpResponseRedirect(f"{settings.LOGIN_URL}?{urlencode({'edulage_error': 'link_refused'})}")
+    return HttpResponseRedirect(page_url("link-refused"))
+
+
+def refuse_suspended_identity(backend, response=None, uid=None, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg
+    if backend.name != identity.EDULAGE_BACKEND or response is None:
+        return {}
+    if response.get("edulage_status", "active") == "active":
+        return {}
+    identity.audit("login_refused", sub=uid, email=response.get("email", ""), detail=f"edulage_status={response['edulage_status']}")
+    return HttpResponseRedirect(page_url("suspended"))
 
 
 def link_verified_account(backend, details, response=None, user=None, uid=None, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg
@@ -69,6 +80,7 @@ def sync_edulage_identity(backend, user=None, response=None, uid=None, new_assoc
     # unreliable here; a fresh link that was not made by ``link_verified_account`` is a new account.
     if new_association and not edulage_linked:
         identity.audit("created", user=user, sub=uid, email=user.email, detail=user.username)
+        emails.send_welcome(user)
     identity.apply_roles(user, claims, ManagedRole.SOURCE_TOKEN)
     identity.apply_pending_admissions(user, uid)
 

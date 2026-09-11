@@ -172,6 +172,22 @@ form[name="sign-in-form"] {
   }
 }
 
+// Injected by EdulageHeader on /authn/login (see EdulageChrome.jsx)
+.el-authn-register {
+  margin: 1rem 0 0 !important;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: t.$ink-600;
+
+  a {
+    font-weight: 700;
+    color: t.$teal-600;
+    text-decoration: none;
+
+    &:hover { color: t.$teal-500; text-decoration: underline; }
+  }
+}
+
 .btn-social.btn-oa2-edulage {
   width: 100% !important;
   margin: 0 !important;
