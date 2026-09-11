@@ -472,3 +472,23 @@ class DashboardCoursesView(APIView):
         listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
         orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
         return Response({"courses": [_serialize_listing(k, listings.get(k), orgs.get(k.org)) for k in keys]})
+
+
+class TenantHostCheckView(APIView):
+    """
+    Caddy on-demand TLS "ask" endpoint: 200 when `domain` is a known tenant host (eox-tenant Route),
+    404 otherwise, so certificates are only issued for institutions approved through the partner queue.
+    Anonymous by design; called by the reverse proxy on the internal network before the first TLS
+    handshake for a new host.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+
+    def get(self, request):
+        from eox_tenant.models import Route  # pylint: disable=import-outside-toplevel
+
+        domain = request.query_params.get("domain", "").lower().rstrip(".")
+        if domain and Route.objects.filter(domain=domain).exists():
+            return Response({"domain": domain, "tenant": True})
+        return Response({"domain": domain, "tenant": False}, status=status.HTTP_404_NOT_FOUND)

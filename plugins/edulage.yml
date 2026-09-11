@@ -3,10 +3,9 @@ version: 0.1.0
 config:
   defaults:
     ALLOW_PUBLIC_REGISTRATION: true
-    # Institution tenant hosts served by the shared LMS (eox-tenant routes them to tenant configs).
-    TENANT_HOSTS:
-      - unia.learn.edulage.org
-      - unib.learn.edulage.org
+    # Institution tenant hosts are <code>.learn.edulage.org: wildcard DNS + Caddy on-demand TLS, gated by
+    # the LMS (only hosts with an eox-tenant Route get a certificate), so approving a partner is enough.
+    TENANT_DOMAIN: learn.edulage.org
     AUTH_HOST: auth.edulage.org
     # Paystack keys are set on the host only (scripts/paystack_apply.sh), never in this repo.
     PAYSTACK_SECRET_KEY: ""
@@ -80,8 +79,8 @@ patches:
     EDULAGE_KC_CLIENT_ID = "{{ EDULAGE_KC_CLIENT_ID }}"
     EDULAGE_KC_CLIENT_SECRET = "{{ EDULAGE_KC_CLIENT_SECRET }}"
     EDULAGE_STUDIO_URL = "https://{{ CMS_HOST }}"
-    ALLOWED_HOSTS += {{ EDULAGE_TENANT_HOSTS }}
-    CSRF_TRUSTED_ORIGINS += ["https://" + h for h in {{ EDULAGE_TENANT_HOSTS }}]
+    ALLOWED_HOSTS += [".{{ EDULAGE_TENANT_DOMAIN }}"]
+    CSRF_TRUSTED_ORIGINS += ["https://*.{{ EDULAGE_TENANT_DOMAIN }}"]
     # eox-tenant (installed via OPENEDX_EXTRA_PIP_REQUIREMENTS, self-registers as a Django plugin).
     # Tenant hosts/orgs are data (Django admin → eox_tenant → Routes/Tenant configs).
     EDNX_USE_SIGNAL = True
@@ -92,8 +91,18 @@ patches:
     rewrite @edulage_logo /media/brand/edulage-logo.png
     @edulage_favicon path /theming/asset/images/favicon.ico /static/indigo/images/favicon.ico
     rewrite @edulage_favicon /media/brand/edulage-icon.png
+  caddyfile-global: |
+    on_demand_tls {
+        ask http://lms:8000/edulage/api/v1/tenant-hosts/check/
+    }
   caddyfile: |
-    {{ EDULAGE_TENANT_HOSTS|join(", ") }} {
+    # Catch-all for institution hosts (*.{{ EDULAGE_TENANT_DOMAIN }}, wildcard DNS). A wildcard site address
+    # would make Caddy stop managing the explicitly named *.learn hosts (apps, meilisearch), so the block is
+    # host-less; the LMS decides per host whether a certificate may be issued and whether to serve it.
+    https:// {
+        tls {
+            on_demand
+        }
         import proxy "lms:8000"
         @edulage_logo path /static/indigo/images/logo.png /static/indigo/images/logo-white.png
         rewrite @edulage_logo /media/brand/edulage-logo.png
