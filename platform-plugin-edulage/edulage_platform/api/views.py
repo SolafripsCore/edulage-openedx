@@ -529,20 +529,83 @@ class PublicInstitutionView(APIView):
                 "image": _absolute_media_url(o.course_image_url) if o.course_image_url else "",
                 "about_url": f"https://{host}/courses/{o.id}/about",
             })
-        name = (
-            tenant.lms_configs.get("EDULAGE_INSTITUTION_NAME")
-            or org.description
-            or tenant.lms_configs.get("PLATFORM_NAME", "").removesuffix(" on EduLage")
-            or org.name
-        )
         return Response({
             "code": code,
-            "name": name,
+            "name": _institution_name(org, tenant),
             "host": host,
             "website": tenant.meta.get("website", ""),
             "country": tenant.meta.get("country", ""),
             "logo": _absolute_media_url(org.logo.url) if org.logo else "",
             "courses": courses,
+        })
+
+
+def _institution_name(org, tenant):
+    return (
+        tenant.lms_configs.get("EDULAGE_INSTITUTION_NAME")
+        or org.description
+        or tenant.lms_configs.get("PLATFORM_NAME", "").removesuffix(" on EduLage")
+        or org.name
+    )
+
+
+class PublicCatalogueView(APIView):
+    """
+    Public, unauthenticated: every live institution (active organisation with a tenant) and every
+    course run open for self-enrolment, read by the edulage.org homepage for real counts and an
+    "Enrol now" strip. Admission-only runs are counted but not listed.
+    GET /edulage/api/v1/catalogue/
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+
+    def get(self, request):
+        from eox_tenant.models import Route, TenantConfig  # pylint: disable=import-outside-toplevel
+        from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-outside-toplevel
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        tenants = {t.external_key.upper(): t for t in TenantConfig.objects.exclude(external_key="")}
+        orgs = [o for o in Organization.objects.filter(active=True) if o.short_name.upper() in tenants]
+        hosts = {r.config_id: r.domain for r in Route.objects.filter(config__in=[tenants[o.short_name.upper()] for o in orgs])}
+        institutions = []
+        for o in orgs:
+            t = tenants[o.short_name.upper()]
+            institutions.append({
+                "code": o.short_name.upper(),
+                "name": _institution_name(o, t),
+                "host": hosts.get(t.id, settings.LMS_BASE),
+                "country": t.meta.get("country", ""),
+                "logo": _absolute_media_url(o.logo.url) if o.logo else "",
+            })
+        by_code = {i["code"]: i for i in institutions}
+        overviews = CourseOverview.objects.filter(org__in=list(by_code)).exclude(catalog_visibility="none")
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=[o.id for o in overviews])}
+        open_courses = []
+        for o in sorted(overviews, key=lambda c: c.start or c.created, reverse=True):
+            listing = listings.get(o.id)
+            if listing is None or not listing.is_open:
+                continue
+            inst = by_code[o.org.upper()]
+            data = _serialize_listing(o.id, listing)
+            open_courses.append({
+                **{f: data[f] for f in PUBLIC_RUN_FIELDS},
+                "title": o.display_name,
+                "institution_name": inst["name"],
+                "institution_logo": inst["logo"],
+                "start": o.start.isoformat() if o.start else None,
+                "image": _absolute_media_url(o.course_image_url) if o.course_image_url else "",
+                "about_url": f"https://{inst['host']}/courses/{o.id}/about",
+            })
+        return Response({
+            "counts": {
+                "institutions": len(institutions),
+                "courses": len(overviews),
+                "open_courses": len(open_courses),
+                "countries": len({i["country"] for i in institutions if i["country"]}),
+            },
+            "institutions": institutions,
+            "open_courses": open_courses[:12],
         })
 
 
