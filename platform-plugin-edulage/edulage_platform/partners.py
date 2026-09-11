@@ -45,6 +45,11 @@ def tenant_host(code):
     return f"{code.lower()}.{settings.LMS_BASE}"
 
 
+def institution_page(code):
+    """edulage.org profile page for an institution (the LMS tenant host's landing and course-list target)."""
+    return f"/institutions/{code.lower()}"
+
+
 def code_available(code):
     from organizations.models import Organization  # pylint: disable=import-outside-toplevel
 
@@ -121,10 +126,15 @@ def provision_institution(code, name, admin_user, request_obj=None):
                     "course_org_filter": [code],
                     "EDULAGE_INSTITUTION": code,
                     "EDULAGE_INSTITUTION_NAME": name,
+                    # "/" and "/courses" on the tenant host land on the institution's edulage.org page.
+                    "MKTG_URLS": {**settings.MKTG_URLS, "ROOT": settings.MKTG_URLS["ROOT"] + institution_page(code), "COURSES": institution_page(code)},
                 },
                 "studio_configs": {},
                 "theming_configs": {},
-                "meta": {"edulage_institution": code, "edulage_institution_name": name},
+                "meta": {
+                    "edulage_institution": code, "edulage_institution_name": name,
+                    "website": request_obj.website if request_obj else "", "country": request_obj.country if request_obj else "",
+                },
             },
         )
         Route.objects.update_or_create(domain=host, defaults={"config": tenant})

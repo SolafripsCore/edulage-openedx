@@ -492,3 +492,55 @@ class TenantHostCheckView(APIView):
         if domain and Route.objects.filter(domain=domain).exists():
             return Response({"domain": domain, "tenant": True})
         return Response({"domain": domain, "tenant": False}, status=status.HTTP_404_NOT_FOUND)
+
+
+class PublicInstitutionView(APIView):
+    """
+    Public, unauthenticated: an institution's profile and listed course runs, read by edulage.org to
+    render /institutions/<code> for institutions onboarded through the partner queue (no static entry).
+    GET /edulage/api/v1/institutions/<code>/  → 404 unless the code is an active organisation with a tenant.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+
+    def get(self, request, code):
+        from eox_tenant.models import Route, TenantConfig  # pylint: disable=import-outside-toplevel
+        from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-outside-toplevel
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        code = code.upper()
+        org = Organization.objects.filter(short_name=code, active=True).first()
+        tenant = TenantConfig.objects.filter(external_key=code.lower()).first()
+        if not org or not tenant:
+            return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
+        route = Route.objects.filter(config=tenant).first()
+        host = route.domain if route else settings.LMS_BASE
+        overviews = CourseOverview.objects.filter(org=code).exclude(catalog_visibility="none").order_by("display_name")
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=[o.id for o in overviews])}
+        courses = []
+        for o in overviews:
+            data = _serialize_listing(o.id, listings.get(o.id), org)
+            courses.append({
+                **{f: data[f] for f in PUBLIC_RUN_FIELDS},
+                "title": o.display_name,
+                "start": o.start.isoformat() if o.start else None,
+                "end": o.end.isoformat() if o.end else None,
+                "image": _absolute_media_url(o.course_image_url) if o.course_image_url else "",
+                "about_url": f"https://{host}/courses/{o.id}/about",
+            })
+        name = (
+            tenant.lms_configs.get("EDULAGE_INSTITUTION_NAME")
+            or org.description
+            or tenant.lms_configs.get("PLATFORM_NAME", "").removesuffix(" on EduLage")
+            or org.name
+        )
+        return Response({
+            "code": code,
+            "name": name,
+            "host": host,
+            "website": tenant.meta.get("website", ""),
+            "country": tenant.meta.get("country", ""),
+            "logo": _absolute_media_url(org.logo.url) if org.logo else "",
+            "courses": courses,
+        })
