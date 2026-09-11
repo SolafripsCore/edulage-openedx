@@ -115,6 +115,9 @@ class IdentityAudit(models.Model):
         ("invited", "Staff invitation sent"),
         ("invite_revoked", "Staff invitation withdrawn"),
         ("invite_accepted", "Staff invitation accepted"),
+        ("partner_requested", "Institution partnership requested"),
+        ("partner_approved", "Institution partnership approved"),
+        ("partner_declined", "Institution partnership declined"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -344,3 +347,37 @@ class StaffInvitation(models.Model):
         if timezone.now() > self.expires:
             return "expired"
         return "pending"
+
+
+class PartnerRequest(models.Model):
+    """
+    A prospective institution's request to join EduLage, submitted from edulage.org. An EduLage
+    administrator approves it (creating the organisation and tenant, and inviting the contact
+    as the first institution administrator) or declines it.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_DECLINED = "declined"
+    STATUS_CHOICES = [(STATUS_PENDING, "Pending review"), (STATUS_APPROVED, "Approved"), (STATUS_DECLINED, "Declined")]
+
+    institution_name = models.CharField(max_length=160)
+    short_name = models.CharField(max_length=16, blank=True, help_text="Proposed institution code (Open edX org short name)")
+    country = models.CharField(max_length=80, blank=True)
+    website = models.URLField(blank=True)
+    contact_name = models.CharField(max_length=120)
+    contact_email = models.EmailField(db_index=True)
+    contact_role = models.CharField(max_length=120, blank=True)
+    message = models.TextField(blank=True)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    created = models.DateTimeField(auto_now_add=True)
+    decided = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    note = models.TextField(blank=True, help_text="Reason sent to the contact on decline; internal note on approval")
+    invitation = models.ForeignKey(StaffInvitation, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.institution_name} ({self.contact_email}) [{self.status}]"

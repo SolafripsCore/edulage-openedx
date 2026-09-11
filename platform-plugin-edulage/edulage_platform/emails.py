@@ -294,3 +294,32 @@ def send_staff_invitation(invitation, institution_name, accept_url):
         return False
     log.info("edulage: sent invitation e-mail to %s (%s)", invitation.email, invitation.claim)
     return True
+
+
+def send_notice(to, subject, eyebrow, heading, paragraphs, details=(), action_url="", action_label="", footnote=""):
+    """Branded transactional notice (text + HTML) to one or more addresses; True when handed to the backend."""
+    context = {
+        "eyebrow": eyebrow,
+        "heading": heading,
+        "paragraphs": paragraphs,
+        "details": list(details),
+        "action_url": action_url,
+        "action_label": action_label,
+        "footnote": footnote,
+        "site_url": SITE_URL,
+        "help_url": f"{SITE_URL}/help",
+        "brand_url": settings.EDULAGE_BRAND_URL,
+    }
+    try:
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=render_to_string("edulage_platform/notice_email.txt", context),
+            from_email=settings.EDULAGE_EMAIL_FROM or settings.DEFAULT_FROM_EMAIL,
+            to=list(to),
+        )
+        message.attach_alternative(render_to_string("edulage_platform/notice_email.html", context), "text/html")
+        message.send()
+    except Exception:  # pylint: disable=broad-except
+        log.exception("edulage: notice e-mail %r to %s failed", subject, to)
+        return False
+    return True
