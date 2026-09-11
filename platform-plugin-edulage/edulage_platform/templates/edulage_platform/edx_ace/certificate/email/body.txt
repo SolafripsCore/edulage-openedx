@@ -1,0 +1,22 @@
+{% load i18n %}{% autoescape off %}
+{% blocktrans %}Congratulations, {{ learner_name }}.{% endblocktrans %}
+
+{% blocktrans trimmed %}{{ institution }} has awarded and issued your {{ credential }} for {{ course_title }}. EduLage holds the record, so employers and other institutions can confirm it is genuine at any time.{% endblocktrans %}
+
+{{ course_title }}
+{{ classification }} · {{ credential }}
+{{ institution }}{% if programme_title %} · {{ programme_title }}{% endif %}
+{% trans "Awarded and issued by:" %} {{ institution }}
+{% trans "Recorded and verified by:" %} EduLage
+{% trans "Credential ID:" %} {{ credential_id }}
+
+{% trans "View your certificate:" %} {{ certificate_url }}
+{% trans "Verification link:" %} {{ verify_url }}
+{% trans "My learning:" %} {{ my_learning_url }}
+
+{% blocktrans trimmed %}The awarding institution remains responsible for the academic decision; for a correction to your name or details, write to {{ support_email }}.{% endblocktrans %}
+
+--
+{{ platform_name }} — The Global Education Village
+{{ site_url }}
+{% endautoescape %}

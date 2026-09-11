@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{ page.title }} · {{ platform_name }}</title>
+  <link rel="icon" href="{{ brand_url }}/favicon.ico">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/inter-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/plusjakartasans-latin.woff2">
+  {% include "edulage_platform/_brand_style.html" %}
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="{{ site_url }}" aria-label="EduLage home"><img src="{{ brand_url }}/images/edulage-logo.png" alt="EduLage"></a>
+      <a class="back" href="{{ site_url }}">← Back to EduLage</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="card" aria-labelledby="status-title">
+        <span class="eyebrow{% if page.status == 403 %} warn{% endif %}">{{ page.eyebrow }}</span>
+        <h1 id="status-title">{{ page.title }}</h1>
+        <p>{{ page.body }}</p>
+        {% if page.steps %}
+        <ol>
+          {% for step in page.steps %}<li>{{ step }}</li>{% endfor %}
+        </ol>
+        {% endif %}
+        {% if payment %}
+        <p class="receipt"><span><b>{{ course_title }}</b></span><span>{{ payment.currency }} {{ amount }}</span><span>Ref {{ payment.reference }}</span></p>
+        {% endif %}
+        <div class="actions">
+          <a class="btn btn-primary" href="{{ primary.href }}">{{ primary.label }}</a>
+          <a class="btn btn-secondary" href="{{ secondary.href }}">{{ secondary.label }}</a>
+        </div>
+        {% if support_email %}
+        <p class="support">Need help? Write to <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p style="color: inherit; font-size: inherit;">© {% now "Y" %} EduLage.org. All rights reserved.</p>
+      <nav aria-label="Legal">
+        <a href="{{ site_url }}/privacy">Privacy</a>
+        <a href="{{ site_url }}/terms">Terms</a>
+        <a href="{{ site_url }}/help">Help &amp; support</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

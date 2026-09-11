@@ -1,0 +1,70 @@
+{% extends 'ace_common/edx_ace/common/base_body.html' %}
+{% load i18n %}
+{% load ace %}
+
+{% block preview_text %}{% blocktrans %}Your EduLage learning account is ready. Sign in once to reach every programme you are admitted to.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding-bottom:14px;">
+      <span style="display:inline-block;padding:4px 10px;border-radius:999px;background-color:#e7f6f2;color:#0e8e73;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">{% trans "Welcome" %}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:26px;line-height:32px;font-weight:800;letter-spacing:-0.02em;color:#09184f;padding-bottom:16px;">
+      {% blocktrans %}Welcome to EduLage, {{ learner_name }}.{% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#475569;padding-bottom:16px;">
+      {% blocktrans trimmed %}
+      Your learning account is ready. One EduLage account gives you a single place for every programme you are
+      admitted to — across universities, colleges, trainers and Open Education Centres in the village.
+      {% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#475569;padding-bottom:8px;">
+      {% blocktrans trimmed %}Here is how it works:{% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:12px;background-color:#f7f9fc;">
+        <tr>
+          <td style="padding:18px 20px 6px 20px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#475569;">
+            <b style="color:#0b1220;">1. {% trans "Discover" %}</b> — {% blocktrans %}browse programmes and institutions on <a href="{{ programmes_url }}" style="color:#0e8e73;text-decoration:underline;">edulage.org</a>.{% endblocktrans %}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:6px 20px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#475569;">
+            <b style="color:#0b1220;">2. {% trans "Apply" %}</b> — {% blocktrans %}the institution reviews your application and confirms your admission.{% endblocktrans %}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:6px 20px 18px 20px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:24px;color:#475569;">
+            <b style="color:#0b1220;">3. {% trans "Learn" %}</b> — {% blocktrans %}once admitted, your course appears in My learning; no second login needed.{% endblocktrans %}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      {% with course_cta_url=my_learning_url course_cta_text=_("Open My learning") %}
+        {% include 'ace_common/edx_ace/common/return_to_course_cta.html' %}
+      {% endwith %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;color:#475569;padding-top:4px;">
+      {% blocktrans trimmed %}
+      You signed in as <b style="color:#0b1220;">{{ learner_email }}</b>. Your name, language and notification
+      preferences can be changed any time in <a href="{{ account_url }}" style="color:#0e8e73;text-decoration:underline;">your account settings</a>.
+      If this was not you, tell us at <a href="mailto:{{ support_email }}" style="color:#0e8e73;text-decoration:underline;">{{ support_email }}</a>.
+      {% endblocktrans %}
+    </td>
+  </tr>
+</table>
+{% endblock %}

@@ -1,0 +1,9 @@
+
+######## edulage-brand: EduLage design system built as a drop-in @edx/brand package
+FROM base AS edulage-brand
+COPY edulage-brand /openedx/edulage-brand
+WORKDIR /openedx/edulage-brand
+RUN --mount=type=cache,target=/root/.npm,sharing=shared npm clean-install --no-audit --no-fund --registry={{ NPM_REGISTRY }} \
+  && npm run build \
+  && npm pack --pack-destination /openedx \
+  && mv /openedx/edx-brand-*.tgz /openedx/edx-brand.tgz

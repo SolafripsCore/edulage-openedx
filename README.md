@@ -8,7 +8,14 @@ everything EduLage-specific so the environment can be rebuilt from scratch:
 - `config.public.yml` — non-secret Tutor settings (hosts, platform name, plugins).
 - `scripts/bootstrap.sh` — provisions a fresh Ubuntu 24.04 host (Docker, firewall, swap, Tutor).
 - `scripts/deploy.sh` — applies config and launches/updates the platform.
-- `plugins/` — Tutor plugins for EduLage (branding, settings, integrations).
+- `plugins/` — Tutor plugins for EduLage (branding, settings, tenant hosts, IdP proxy).
+- `platform-plugin-edulage/` — Django plugin: EduLage OIDC backend, role-claim sync,
+  admission-gated enrolment filter, admissions integration API.
+- `infra/keycloak/` — stand-in EduLage identity provider used by the SSO spike.
+- `scripts/spike/` — seed scripts and runtime test suites (tenant isolation, admissions, SSO).
+- `scripts/pilot/` — controlled pilot content: `retire_demo_course.py` (removes the stock DemoX course), `seed_pilot_content.py` (CMS shell; one sample course per test institution, UNIA CS101 / UNIB MGT101), `seed_pilot_learners.py` (LMS shell; admitted enrolments + one demo certificate).
+- `docs/spike-multitenancy-sso.md` — spike report: architecture, SSO, roles, isolation findings,
+  data mapping, API/events, security, limitations, production plan, estimate.
 - `theme/` — EduLage comprehensive theme / brand package. *(to come)*
 
 Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
@@ -23,14 +30,39 @@ Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
 ## Operating
 
 ```bash
-ssh root@<host>
-su - tutor
+ssh <admin-user>@<host>            # named admin from scripts/harden.sh; root SSH is disabled
+sudo -iu tutor                       # Tutor is pip-installed in ~/venv (needed for Python plugins)
 tutor local status                 # containers
 tutor local logs -f lms            # logs
 tutor local do createuser --staff --superuser <user> <email>
 tutor local do importdemocourse    # demo course
 tutor config save --set KEY=VALUE && tutor local launch -I   # apply config change
 ```
+
+### Load testing
+
+`scripts/loadtest/` holds the k6 learner journey and the seeding script for throw-away learners
+(`loadtest-NN@example.invalid`, e-mails pre-marked as sent so nothing is delivered). Seed, run, tear down:
+
+```
+LOAD_PASSWORD=... LOAD_USERS=20 tutor local run lms ./manage.py lms shell < scripts/loadtest/seed_load_users.py
+LOAD_PASSWORD=... k6 run -e USERS=20 -e STAGES=30s:30,3m:30,15s:0 -e OUT=/tmp/k6 scripts/loadtest/learner_journey.js
+LOAD_TEARDOWN=1 tutor local run lms ./manage.py lms shell < scripts/loadtest/seed_load_users.py
+```
+
+Run k6 from more than one source IP above ~30 VUs, or the LMS per-IP login rate limiter skews the
+failure rate. Results and the published capacity figure: `docs/spike-multitenancy-sso.md` §14.11.
+
+### Outgoing mail
+
+Transactional mail (LMS welcome/enrolment/certificate, Keycloak password/verification) goes out
+through Resend as `support@edulage.org`. `edulage.org` is a verified sending domain in Resend
+(DKIM `resend._domainkey`, return-path `send.` SPF/MX, `_dmarc` — all in Vercel DNS). The relay is
+`smtp.resend.com:2587` STARTTLS (DigitalOcean blocks outbound 25/465/587), user `resend`, password
+= a Resend *sending-only* API key scoped to edulage.org. Apply/rotate with
+`RESEND_SMTP_KEY=re_... scripts/smtp_apply.sh` (LMS/CMS) and the realm's SMTP settings in the
+Keycloak admin console (realm `edulage` → Realm settings → Email). Test:
+`tutor local run lms ./manage.py lms edulage_email enrolment <user> <course-key> --send --resend`.
 
 Upgrades: follow https://docs.tutor.edly.io/local.html#upgrading-from-older-releases — one named
 release at a time, on staging first.

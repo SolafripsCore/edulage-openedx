@@ -1,3 +1,8 @@
 .DS_Store
 config.yml
 *.env
+__pycache__/
+*.pyc
+tutor-edulage-theme/*.egg-info/
+tutor-edulage-theme/build/
+tutor-edulage-theme/*.egg-info/

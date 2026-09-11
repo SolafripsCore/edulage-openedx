@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tutor-contrib-edulage-theme"
+version = "0.1.0"
+description = "EduLage design system for Open edX: Paragon brand, MFE header/footer and legacy theme matching edulage.org"
+requires-python = ">=3.9"
+dependencies = ["tutor>=20,<23", "tutor-mfe>=20,<23"]
+
+[project.entry-points."tutor.plugin.v1"]
+edulage-theme = "tutoredulagetheme.plugin"
+
+[tool.setuptools]
+packages = ["tutoredulagetheme"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+tutoredulagetheme = ["patches/*", "components/*", "templates/**/*", "templates/**/.*"]

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-plugin-edulage"
+version = "0.1.0"
+description = "EduLage integration plugin for Open edX: admission-gated enrolment and integration API."
+requires-python = ">=3.11"
+dependencies = []
+
+[project.entry-points."lms.djangoapp"]
+edulage_platform = "edulage_platform.apps:EdulagePlatformConfig"
+
+[project.entry-points."cms.djangoapp"]
+edulage_platform = "edulage_platform.apps:EdulagePlatformConfig"
+
+[tool.setuptools.packages.find]
+include = ["edulage_platform*"]
+
+[tool.setuptools.package-data]
+edulage_platform = ["templates/**/*.html", "templates/**/*.txt"]

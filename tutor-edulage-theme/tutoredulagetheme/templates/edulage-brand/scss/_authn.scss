@@ -1,0 +1,251 @@
+// frontend-app-authn has no layout plugin slots, so the login / register /
+// reset pages are restyled purely through CSS. Selectors below only exist in
+// that MFE (base-container, tabs, social buttons) and are inert elsewhere.
+@use "tokens" as t;
+
+.extra-large-screen-top-stripe {
+  display: none !important;
+}
+
+// ---------------------------------------------------------------------------
+// Left panel: navy hero panel (site hero treatment) instead of the diagonal
+// ---------------------------------------------------------------------------
+.layout > .w-50.d-flex,
+.layout > .d-flex.w-50 {
+  position: relative;
+  background: t.$navy-900;
+  background-image:
+    radial-gradient(60% 50% at 80% 10%, rgba(t.$teal-500, 0.28), transparent 70%),
+    linear-gradient(160deg, t.$navy-800 0%, t.$navy-900 100%);
+  overflow: hidden;
+
+  > .bg-primary-400 {
+    background: transparent !important;
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  > .bg-white {
+    display: none !important;
+  }
+
+  .logo {
+    top: 28px;
+    left: 32px;
+    width: 156px;
+    height: auto;
+    filter: brightness(0) invert(1);
+  }
+
+  .min-vh-100 {
+    padding: 120px 0;
+  }
+
+  h1.display-2 {
+    margin-left: 32px !important;
+    max-width: 30rem;
+    font-family: t.$font-heading;
+    font-size: clamp(2.25rem, 3.4vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+
+    &::before {
+      content: "The Global Education Village";
+      display: block;
+      margin-bottom: 1.25rem;
+      padding-left: 2.75rem;
+      position: relative;
+      font-family: t.$font-sans;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: t.$teal-400;
+      background: linear-gradient(t.$teal-400, t.$teal-400) 0 50% / 2rem 1px no-repeat;
+    }
+
+    &::after {
+      content: "Access your enrolled programmes, progress, schedules and support—delivered by participating tertiary institutions through one EduLage account.";
+      display: block;
+      margin-top: 1.5rem;
+      max-width: 27rem;
+      font-family: t.$font-sans;
+      font-size: 1.0625rem;
+      font-weight: 400;
+      line-height: 1.6;
+      letter-spacing: 0;
+      color: t.$slate-300;
+    }
+
+    .text-accent-a {
+      color: t.$teal-400 !important;
+    }
+  }
+}
+
+// Medium / small layouts (stacked hero above the form)
+.layout .medium-screen-top-stripe,
+.layout .small-screen-top-stripe {
+  display: none !important;
+}
+
+.layout .col-md-12.bg-primary-400,
+.layout .medium-screen-svg-primary,
+.layout .small-screen-svg-primary {
+  display: none !important;
+}
+
+// ---------------------------------------------------------------------------
+// Right panel: the form
+// ---------------------------------------------------------------------------
+.layout > .content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 64px clamp(24px, 6vw, 96px) !important;
+  background: t.$white;
+
+  .tab-content::before {
+    content: "Sign in to My Learning";
+    display: block;
+    font-family: t.$font-heading;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: t.$navy-800;
+    margin-bottom: 0.5rem;
+  }
+
+  // Hide the Register/Sign in tab strip; registration happens through EduLage.
+  .pgn__tabs.nav-tabs {
+    display: none !important;
+  }
+
+  .main-content,
+  .mw-xs {
+    max-width: 26rem !important;
+  }
+}
+
+// Order: EduLage SSO first, local credentials second
+form[name="sign-in-form"] {
+  display: flex;
+  flex-direction: column;
+
+  > .h4 {
+    order: -2;
+    margin: 0 0 0.75rem !important;
+    font-family: t.$font-sans;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    color: t.$ink-600;
+    visibility: hidden;
+    position: relative;
+    height: 1.5rem;
+
+    &::before {
+      content: "Use your EduLage account to continue to your enrolled learning.";
+      visibility: visible;
+      position: absolute;
+      inset: 0;
+    }
+  }
+
+  > .row.m-0 {
+    order: -1;
+    display: block;
+    margin-bottom: 1.5rem !important;
+
+    &::after {
+      content: "Or sign in with a local EduLage administrator account";
+      display: block;
+      margin-top: 1.75rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid t.$line;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: t.$ink-400;
+    }
+  }
+}
+
+// Injected by EdulageHeader on /authn/login (see EdulageChrome.jsx)
+.el-authn-register {
+  margin: 1rem 0 0 !important;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: t.$ink-600;
+
+  a {
+    font-weight: 700;
+    color: t.$teal-600;
+    text-decoration: none;
+
+    &:hover { color: t.$teal-500; text-decoration: underline; }
+  }
+}
+
+.btn-social.btn-oa2-edulage {
+  width: 100% !important;
+  margin: 0 !important;
+  min-height: 48px;
+  justify-content: center;
+  border-radius: t.$radius-md !important;
+  border: 1px solid t.$teal-600 !important;
+  background: t.$teal-600 !important;
+  color: t.$white !important;
+  font-family: t.$font-sans;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  box-shadow: none !important;
+  transition: background-color t.$ease, border-color t.$ease;
+
+  &:hover,
+  &:focus {
+    background: t.$teal-500 !important;
+    border-color: t.$teal-500 !important;
+    color: t.$white !important;
+  }
+
+  &:focus-visible {
+    outline: 2px solid t.$teal-400;
+    outline-offset: 2px;
+  }
+
+  .btn-tpa__font-container,
+  .pgn__icon {
+    display: none !important;
+  }
+
+  .notranslate {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0;
+
+    &::before {
+      content: "Continue with EduLage";
+      font-size: 0.9375rem;
+    }
+  }
+}
+
+// Local sign-in controls
+form[name="sign-in-form"] {
+  .login-button-width {
+    min-width: 8.5rem;
+  }
+
+  .btn-link.text-body {
+    color: t.$teal-600 !important;
+    font-weight: 600;
+  }
+}
+
+// Third-party-auth auto-registration and error pages
+.layout .third-party-auth,
+.layout .tpa-skeleton {
+  font-family: t.$font-sans;
+}

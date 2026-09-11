@@ -1,0 +1,122 @@
+/* EduLage login theme — brand tokens from edulage.org (globals.css) applied over PatternFly v5. */
+
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("../fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
+  src: url("../fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url("../fonts/plusjakartasans-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 200 800; font-display: swap;
+  src: url("../fonts/plusjakartasans-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+:root {
+  --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f; --navy-600: #22376f;
+  --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
+  --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
+  --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff; --slate-300: #cbd5e1;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Plus Jakarta Sans", var(--font-sans);
+  --radius-md: 12px; --header-h: 72px;
+
+  /* PatternFly overrides */
+  --pf-v5-global--FontFamily--text: var(--font-sans);
+  --pf-v5-global--FontFamily--heading: var(--font-heading);
+  --pf-v5-global--primary-color--100: var(--teal-600);
+  --pf-v5-global--primary-color--200: var(--teal-500);
+  --pf-v5-global--link--Color: var(--teal-600);
+  --pf-v5-global--link--Color--hover: var(--teal-500);
+  --pf-v5-global--active-color--100: var(--teal-600);
+  --pf-v5-global--BorderColor--100: var(--line);
+  --pf-v5-global--Color--100: var(--ink-900);
+  --pf-v5-global--Color--200: var(--ink-600);
+  --pf-v5-global--BorderRadius--sm: 8px;
+  --keycloak-card-top-color: transparent;
+  --keycloak-bg-logo-url: none;
+}
+
+html.edulage, .edulage body { height: auto; min-height: 100%; }
+.edulage body {
+  margin: 0; background: var(--surface) !important; color: var(--ink-900);
+  font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+.el-visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.el-skip { position: absolute; left: -999px; top: 8px; background: var(--navy-900); color: #fff; padding: 8px 12px; border-radius: 8px; z-index: 100; }
+.el-skip:focus { left: 8px; }
+
+/* Header — same as edulage.org SiteChrome header (72px, white, hairline) */
+.el-header { height: var(--header-h); background: var(--white); border-bottom: 1px solid var(--line); }
+.el-header__inner { height: 100%; max-width: 1280px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.el-header__logo img { display: block; height: 36px; width: auto; }
+.el-header__nav { display: flex; gap: 28px; }
+.el-header__nav a { font-size: 0.9375rem; font-weight: 600; color: var(--navy-800); text-decoration: none; }
+.el-header__nav a:hover { color: var(--teal-600); }
+@media (min-width: 768px) { .el-header__inner { padding: 0 64px; } }
+
+/* Layout: hero (left) + panel (right) */
+.edulage .pf-v5-c-login.el-layout {
+  flex: 1; display: grid; grid-template-columns: 1fr; padding: 0; min-height: 0;
+  background: var(--surface); align-items: stretch;
+}
+@media (min-width: 992px) { .edulage .pf-v5-c-login.el-layout { grid-template-columns: minmax(0, 46%) minmax(0, 54%); } }
+
+.el-hero { display: none; color: #fff; background: var(--navy-900);
+  background-image: radial-gradient(60% 50% at 80% 10%, rgba(16,165,133,.28), transparent 70%), linear-gradient(160deg, var(--navy-800) 0%, var(--navy-900) 100%); }
+@media (min-width: 992px) { .el-hero { display: flex; align-items: center; } }
+.el-hero__inner { padding: 96px 64px; max-width: 560px; }
+.el-hero__eyebrow { margin: 0 0 20px; padding-left: 44px; position: relative; font-size: .75rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--teal-400); }
+.el-hero__eyebrow::before { content: ""; position: absolute; left: 0; top: 50%; width: 32px; height: 1px; background: var(--teal-400); }
+.el-hero__title { margin: 0; font-family: var(--font-heading); font-size: clamp(2.25rem, 3.4vw, 3.25rem); font-weight: 800; line-height: 1.08; letter-spacing: -.02em; }
+.el-hero__title .el-accent { color: var(--teal-400); }
+.el-hero__lead { margin: 24px 0 0; max-width: 27rem; font-size: 1.0625rem; line-height: 1.6; color: var(--slate-300); }
+.el-hero__points { margin: 32px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.el-hero__points li { position: relative; padding-left: 28px; font-size: .9375rem; color: #e2e8f0; }
+.el-hero__points li::before { content: ""; position: absolute; left: 0; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--teal-500);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23000'/%3E%3Cpath d='M4.5 8.5l2.2 2.2L11.5 6' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23000'/%3E%3Cpath d='M4.5 8.5l2.2 2.2L11.5 6' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }
+
+.edulage .pf-v5-c-login__container.el-panel {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  grid-template-columns: none; grid-template-areas: none; width: 100%; max-width: none; margin: 0;
+  padding: 48px 24px 64px; background: var(--white);
+}
+@media (min-width: 768px) { .edulage .pf-v5-c-login__container.el-panel { padding: 64px clamp(24px, 6vw, 96px); } }
+.edulage .pf-v5-c-login__main { width: 100%; max-width: 27rem; margin: 0; box-shadow: none; border: 0; border-radius: 0; background: transparent; }
+.edulage .pf-v5-c-login__main-header { border-top: 0; padding: 0 0 8px; }
+.edulage .pf-v5-c-login__main-header .pf-v5-c-title { font-family: var(--font-heading); font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; color: var(--navy-800); }
+.edulage .pf-v5-c-login__main-body, .edulage .pf-v5-c-login__main-footer { padding-left: 0; padding-right: 0; }
+.edulage .pf-v5-c-login__main-footer-band { padding-left: 0; padding-right: 0; }
+
+/* Controls */
+.edulage .pf-v5-c-form__label-text { font-weight: 600; color: var(--ink-900); font-size: .9375rem; }
+.edulage .pf-v5-c-form-control { --pf-v5-c-form-control--BorderRadius: var(--radius-md); min-height: 48px; border-color: var(--line); }
+.edulage .pf-v5-c-form-control input { min-height: 46px; padding-left: 14px; font-size: 1rem; }
+.edulage .pf-v5-c-form-control:focus-within { --pf-v5-c-form-control--after--BorderBottomColor: var(--teal-600); --pf-v5-c-form-control--focus--after--BorderBottomColor: var(--teal-600); }
+.edulage .pf-v5-c-form-control::after { border-bottom-color: transparent !important; }
+.edulage .pf-v5-c-form-control:focus-within { outline: 2px solid var(--teal-400); outline-offset: 1px; --pf-v5-c-form-control--focus--BorderBottomColor: transparent; }
+.edulage .pf-v5-c-form-control input:focus, .edulage .pf-v5-c-form-control input:focus-visible { outline: none; box-shadow: none; }
+.edulage .pf-v5-c-button.pf-m-primary { min-height: 48px; border-radius: var(--radius-md); background: var(--teal-600); font-weight: 700; font-size: .9375rem; }
+.edulage .pf-v5-c-button.pf-m-primary:hover, .edulage .pf-v5-c-button.pf-m-primary:focus { background: var(--teal-500); }
+.edulage .pf-v5-c-button.pf-m-secondary { border-radius: var(--radius-md); min-height: 48px; --pf-v5-c-button--m-secondary--Color: var(--navy-800); --pf-v5-c-button--m-secondary--BorderColor: var(--line); }
+.edulage .pf-v5-c-button.pf-m-control { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.edulage .pf-v5-c-check__label { color: var(--ink-600); }
+.edulage a { color: var(--teal-600); font-weight: 600; text-decoration: none; }
+.edulage a:hover { color: var(--teal-500); text-decoration: underline; }
+.edulage #kc-registration, .edulage #kc-info-wrapper { color: var(--ink-600); font-size: .9375rem; }
+.edulage .pf-v5-c-alert { border-radius: var(--radius-md); }
+.edulage .pf-v5-c-alert.pf-m-danger { --pf-v5-c-alert--BorderTopColor: #dc2626; }
+.edulage .pf-v5-c-alert.pf-m-success { --pf-v5-c-alert--BorderTopColor: var(--teal-500); }
+.edulage .pf-v5-c-login__main-footer-links, .edulage #kc-social-providers { padding-left: 0; padding-right: 0; }
+.edulage .pf-v5-c-form__helper-text, .edulage .subtitle { color: var(--ink-600); }
+
+/* Footer — condensed edulage.org footer */
+.el-footer { background: var(--navy-900); color: var(--slate-300); font-size: .875rem; }
+.el-footer__inner { max-width: 1280px; margin: 0 auto; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.el-footer nav { display: flex; gap: 20px; }
+.el-footer a { color: #fff; font-weight: 500; text-decoration: none; }
+.el-footer a:hover { color: var(--teal-400); }
+@media (min-width: 768px) { .el-footer__inner { padding: 20px 64px; } }
