@@ -128,6 +128,40 @@
             </table>
             {% else %}<p class="empty">No pending invitations.</p>{% endif %}
           </section>
+
+          <section class="panel" aria-labelledby="admissions-title">
+            <h2 id="admissions-title">Admissions</h2>
+            <p class="lead">Applications to your admission-required programmes. Admitting a learner enrols them immediately and activates the programme on their My learning dashboard; every decision is e-mailed to the learner.</p>
+            {% if applications %}
+            <table>
+              <thead><tr><th>Applicant</th><th>Programme</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                {% for a in applications %}
+                <tr>
+                  <td>{{ a.name }}<span class="sub">{{ a.email }} · {{ a.application_id }}</span></td>
+                  <td>{{ a.course }}<span class="sub">{{ a.course_id }}</span></td>
+                  <td><span class="tag{% if a.status == 'admitted' %} teal{% endif %}">{{ a.status_label }}</span><span class="sub">{{ a.modified|date:"j M Y" }}</span></td>
+                  <td style="text-align:right;white-space:nowrap;">
+                    {% if a.open %}
+                    <form class="inline" method="post" action="{% url 'edulage:console-admissions-decide' org=org pk=a.pk decision='admit' %}">{% csrf_token %}<button class="link-btn" type="submit">Admit</button></form>
+                    {% if a.status != 'deferred' %}<form class="inline" method="post" action="{% url 'edulage:console-admissions-decide' org=org pk=a.pk decision='defer' %}">{% csrf_token %}<button class="link-btn" type="submit">Defer</button></form>{% endif %}
+                    <form class="inline" method="post" action="{% url 'edulage:console-admissions-decide' org=org pk=a.pk decision='decline' %}" onsubmit="return confirm('Decline {{ a.email|escapejs }} for {{ a.course|escapejs }}?');">{% csrf_token %}<button class="link-btn danger" type="submit">Decline</button></form>
+                    {% elif a.status == 'admitted' %}
+                    <form class="inline" method="post" action="{% url 'edulage:console-admissions-decide' org=org pk=a.pk decision='decline' %}" onsubmit="return confirm('Revoke {{ a.email|escapejs }}\u2019s admission to {{ a.course|escapejs }}? They will be un-enrolled.');">{% csrf_token %}<button class="link-btn danger" type="submit">Revoke</button></form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% else %}<p class="empty">No applications yet.</p>{% endif %}
+            <form method="post" action="{% url 'edulage:console-admissions-upload' org=org %}" enctype="multipart/form-data" style="margin-top:18px;">
+              {% csrf_token %}
+              <label for="csv">Upload decisions (CSV: email, course_id, decision — admit / decline / defer / review)</label>
+              <input id="csv" name="file" type="file" accept=".csv,text/csv" required>
+              <button class="btn btn-primary" type="submit" style="margin-top:10px;">Record decisions</button>
+            </form>
+          </section>
         </div>
 
         <aside class="panel" aria-labelledby="invite-title">
