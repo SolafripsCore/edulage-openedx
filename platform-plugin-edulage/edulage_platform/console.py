@@ -26,7 +26,7 @@ from django.views.decorators.http import require_POST
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 
-from . import emails, identity, keycloak
+from . import admissions, emails, identity, keycloak
 from .auth import REGISTER_PARAM
 from .middleware import STAFF_SESSION_KEY
 from .models import ManagedRole, StaffInvitation
@@ -139,6 +139,7 @@ def console_view(request, org=None):
         org_roles=StaffInvitation.ORG_ROLES,
         course_roles=StaffInvitation.COURSE_ROLES,
         course_runs=_course_runs(org),
+        applications=admissions.applications(org),
         idp_ready=keycloak.configured(),
         me=request.user.username,
     )
