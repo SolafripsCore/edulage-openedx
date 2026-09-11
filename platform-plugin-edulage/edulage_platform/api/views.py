@@ -49,6 +49,7 @@ from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from .. import identity
@@ -355,6 +356,43 @@ class PublicRunsView(APIView):
             data = _serialize_listing(k, listings.get(k))
             runs.append({f: data[f] for f in PUBLIC_RUN_FIELDS})
         return Response({"runs": runs})
+
+
+class PartnerRequestThrottle(AnonRateThrottle):
+    rate = "5/hour"
+
+
+class PartnerRequestView(APIView):
+    """
+    Public, unauthenticated: an institution's request to join EduLage from the edulage.org form.
+    POST /edulage/api/v1/partner-requests/  → 202 {"status": "received"|"already_pending"}
+    Nothing is provisioned here; an EduLage administrator reviews at /edulage/admin/partners/.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+    throttle_classes = (PartnerRequestThrottle,)
+    REQUIRED = ("institution_name", "contact_name", "contact_email")
+    LIMITS = {"institution_name": 160, "short_name": 16, "country": 80, "website": 200, "contact_name": 120, "contact_email": 254, "contact_role": 120, "message": 4000}
+
+    def post(self, request):
+        from .. import partners  # pylint: disable=import-outside-toplevel
+
+        data = request.data if isinstance(request.data, dict) else {}
+        if data.get("company"):  # honeypot field, hidden on the form
+            return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
+        clean = {k: str(data.get(k) or "").strip() for k in self.LIMITS}
+        problems = [k for k in self.REQUIRED if not clean[k]] + [k for k, v in clean.items() if len(v) > self.LIMITS[k]]
+        if "@" not in clean["contact_email"] or "." not in clean["contact_email"].rpartition("@")[2]:
+            problems.append("contact_email")
+        if clean["website"] and not clean["website"].startswith(("http://", "https://")):
+            clean["website"] = "https://" + clean["website"]
+        if clean["short_name"] and not partners.CODE_RE.match(clean["short_name"].upper()):
+            problems.append("short_name")
+        if problems:
+            return Response({"error": "invalid", "fields": sorted(set(problems))}, status=status.HTTP_400_BAD_REQUEST)
+        req, created = partners.record_request(clean)
+        return Response({"status": "received" if created else "already_pending", "id": req.pk}, status=status.HTTP_202_ACCEPTED)
 
 
 STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}

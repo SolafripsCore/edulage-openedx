@@ -50,6 +50,8 @@ def plugin_settings(settings):
         settings.EDULAGE_KC_CLIENT_SECRET = ""
     if not hasattr(settings, "EDULAGE_BILLING_EMAIL"):
         settings.EDULAGE_BILLING_EMAIL = "billing@edulage.org"
+    if not hasattr(settings, "EDULAGE_PARTNERS_EMAIL"):
+        settings.EDULAGE_PARTNERS_EMAIL = "admin@edulage.org"
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))

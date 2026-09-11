@@ -72,7 +72,8 @@ def _org_name(org):
     from organizations.models import Organization  # pylint: disable=import-outside-toplevel
 
     o = Organization.objects.filter(short_name=org).first()
-    return o.name if o else org
+    # eox-tenant forces Organization.name == short_name; the display name is kept in ``description``.
+    return (o.description or o.name) if o else org
 
 
 def _course_runs(org):
