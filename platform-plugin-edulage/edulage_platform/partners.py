@@ -6,8 +6,8 @@ organisation, the eox-tenant configuration and route for ``<code>.<LMS host>``, 
 invitation making the named contact the first institution administrator — from there the
 institution console takes over. Nothing is created from the public form itself.
 
-The tenant host still needs DNS and a Caddy entry (``EDULAGE_TENANT_HOSTS``) before it is served;
-the institution works on the platform host and in Studio immediately.
+The tenant host is served as soon as the route exists: wildcard DNS points ``*.<LMS host>`` at the
+proxy and Caddy issues its certificate on demand after asking the LMS whether the host is a tenant.
 """
 import logging
 import re
