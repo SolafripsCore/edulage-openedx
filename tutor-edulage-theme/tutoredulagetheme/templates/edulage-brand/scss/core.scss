@@ -1,0 +1,220 @@
+// Paragon core override + EduLage site chrome (header/footer) styles.
+// Loaded on every MFE after @openedx/paragon/dist/core.min.css.
+@use "tokens" as t;
+@use "fonts";
+@use "chrome";
+@use "authn";
+@use "dashboard";
+
+// ---------------------------------------------------------------------------
+// Paragon non-color tokens: typography, radii, spacing, buttons, forms
+// ---------------------------------------------------------------------------
+:root {
+  --pgn-typography-font-family-base: #{t.$font-sans};
+  --pgn-typography-font-family-sans-serif: #{t.$font-sans};
+  --pgn-typography-input-btn-font-family: #{t.$font-sans};
+  --pgn-typography-headings-font-family: #{t.$font-heading};
+  --pgn-typography-headings-font-weight: 700;
+  --pgn-typography-headings-line-height: 1.12;
+  --pgn-typography-font-size-base: 1rem;
+  --pgn-typography-font-size-sm: 0.875rem;
+  --pgn-typography-font-size-xs: 0.75rem;
+  --pgn-typography-font-size-lg: 1.0625rem;
+  --pgn-typography-line-height-base: 1.6;
+  --pgn-typography-font-weight-semi-bold: 600;
+  --pgn-typography-font-size-h1-base: 2.5rem;
+  --pgn-typography-font-size-h1-mobile: 2rem;
+  --pgn-typography-font-size-h2-base: 2rem;
+  --pgn-typography-font-size-h2-mobile: 1.75rem;
+  --pgn-typography-font-size-h3-base: 1.5rem;
+  --pgn-typography-font-size-h4-base: 1.25rem;
+  --pgn-typography-font-size-h5-base: 1.0625rem;
+  --pgn-typography-font-size-h6-base: 0.875rem;
+  --pgn-typography-font-size-display-1: 3rem;
+  --pgn-typography-font-size-display-2: 3.75rem;
+  --pgn-typography-font-size-display-mobile-1: 2.5rem;
+  --pgn-typography-line-height-display-mobile: 1.12;
+
+  --pgn-size-border-radius-base: #{t.$radius-md};
+  --pgn-size-border-radius-lg: #{t.$radius-xl};
+  --pgn-size-border-radius-sm: #{t.$radius-md};
+  --pgn-size-card-border-radius: #{t.$radius-xl};
+  --pgn-size-dropdown-border-radius: #{t.$radius-xl};
+  --pgn-size-modal-content-border-radius: #{t.$radius-2xl};
+  --pgn-size-alert-border-radius: #{t.$radius-lg};
+  --pgn-size-badge-border-radius: 9999px;
+  --pgn-size-progress-border-radius: 9999px;
+
+  // Button.tsx: px-4 py-2.5 text-sm font-semibold rounded-md border
+  --pgn-typography-btn-font-weight: 600;
+  --pgn-typography-input-btn-font-size-base: 0.875rem;
+  --pgn-typography-input-btn-font-size-sm: 0.8125rem;
+  --pgn-typography-input-btn-font-size-lg: 0.9375rem;
+  --pgn-typography-input-btn-line-height-base: 1.25rem;
+  --pgn-spacing-input-btn-padding-y: 0.625rem;
+  --pgn-spacing-input-btn-padding-x: 1rem;
+  --pgn-spacing-input-btn-padding-y-sm: 0.5rem;
+  --pgn-spacing-input-btn-padding-x-sm: 0.75rem;
+  --pgn-spacing-input-btn-padding-y-lg: 0.75rem;
+  --pgn-spacing-input-btn-padding-x-lg: 1.25rem;
+  --pgn-size-btn-focus-width: 2px;
+  --pgn-size-btn-border-width: 1px;
+  --pgn-size-form-input-border-width: 1px;
+  --pgn-size-form-control-height: 2.75rem; // min-h-11
+
+  --pgn-elevation-card-box-shadow: none;
+  --pgn-elevation-dropdown-box-shadow: 0 20px 25px -5px rgba(6, 16, 52, 0.1), 0 8px 10px -6px rgba(6, 16, 52, 0.1);
+  --pgn-elevation-popover-box-shadow: 0 12px 24px rgba(6, 16, 52, 0.12);
+  --pgn-elevation-modal-box-shadow: 0 40px 90px rgba(6, 16, 52, 0.28);
+
+  --pgn-transition-btn: color #{t.$ease}, background-color #{t.$ease}, border-color #{t.$ease}, box-shadow #{t.$ease}, transform #{t.$ease};
+}
+
+// ---------------------------------------------------------------------------
+// Base (globals.css)
+// ---------------------------------------------------------------------------
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: t.$white;
+  color: t.$ink-900;
+  font-family: t.$font-sans;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+.h1,
+.h2,
+.h3,
+.h4,
+.display-1,
+.display-2 {
+  font-family: t.$font-heading;
+  letter-spacing: -0.02em;
+  color: t.$navy-800;
+  overflow-wrap: break-word;
+}
+
+a,
+button,
+input,
+select {
+  transition: color t.$ease, background-color t.$ease, border-color t.$ease, box-shadow t.$ease, transform t.$ease;
+}
+
+:focus-visible {
+  outline: 2px solid t.$teal-500;
+  outline-offset: 2px;
+}
+
+// Paragon buttons -> Button.tsx focus ring (ring-2 ring-teal-500 ring-offset-2)
+.btn:focus,
+.btn.focus,
+.btn:focus-visible {
+  box-shadow: 0 0 0 2px t.$white, 0 0 0 4px t.$teal-500 !important;
+  outline: none;
+}
+
+.btn {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.btn-outline-primary {
+  background-color: t.$white;
+}
+
+.btn-brand:hover {
+  border-color: t.$navy-800;
+}
+
+// Cards (card-hover)
+.pgn__card,
+.card {
+  border-color: t.$line;
+  transition: border-color t.$ease-slow, box-shadow t.$ease-slow, transform t.$ease-slow;
+}
+
+.pgn__card.pgn__card-clickable:hover,
+.pgn__card[tabindex]:hover {
+  border-color: t.$teal-500;
+  box-shadow: t.$shadow-card;
+  transform: translateY(-2px);
+}
+
+.pgn__card .pgn__card-header-title {
+  font-family: t.$font-heading;
+  letter-spacing: -0.02em;
+  color: t.$navy-800;
+}
+
+// Forms
+.form-control,
+.pgn__form-control {
+  border-radius: t.$radius-md;
+  border-color: t.$line;
+  color: t.$navy-800;
+}
+
+.form-control:focus,
+.pgn__form-control:focus {
+  border-color: t.$teal-500;
+  box-shadow: 0 0 0 2px rgba(16, 165, 133, 0.2);
+}
+
+// Nav tabs (learner dashboard / course tabs) -> underline navy
+.nav-tabs .nav-link {
+  font-weight: 500;
+  color: t.$ink-600;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+
+  &:hover,
+  &:focus {
+    color: t.$navy-800;
+    border-color: t.$line;
+    background: transparent;
+  }
+
+  &.active {
+    color: t.$navy-800;
+    border-color: t.$navy-800;
+    background: transparent;
+  }
+}
+
+// Section kicker (used by chrome and My learning)
+.el-kicker {
+  color: t.$teal-600;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .pgn__card.pgn__card-clickable:hover {
+    transform: none;
+  }
+}
