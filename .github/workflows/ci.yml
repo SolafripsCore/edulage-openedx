@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tooling
+        run: pip install --quiet ruff==0.16.7 pyyaml
+      - name: Lint Python (plugin, theme, infra, scripts)
+        run: ruff check --select E9,F63,F7,F82,F401,F811,F841 --line-length 120 .
+      - name: Byte-compile Python
+        run: python -m compileall -q platform-plugin-edulage tutor-edulage-theme/tutoredulagetheme infra scripts
+      - name: Plugin package builds
+        run: pip install --quiet build && python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-edulage
+      - name: Every model change has a migration file
+        run: |
+          # each migration must be referenced as a dependency or be the leaf; catches two leaves (forgotten merge)
+          python - <<'EOF'
+          import re, pathlib
+          d = pathlib.Path("platform-plugin-edulage/edulage_platform/migrations")
+          names = {p.stem for p in d.glob("0*.py")}
+          deps = set()
+          for p in d.glob("0*.py"):
+              deps |= set(re.findall(r'\(["\']edulage_platform["\'],\s*["\']([^"\']+)["\']\)', p.read_text()))
+          leaves = names - deps
+          assert len(leaves) == 1, f"expected one leaf migration, found {sorted(leaves)}"
+          print("leaf:", leaves.pop(), "| migrations:", len(names))
+          EOF
+      - name: Shell syntax
+        run: git ls-files '*.sh' | xargs -n1 bash -n
+      - name: Tutor / compose YAML parses
+        run: |
+          python - <<'EOF'
+          import yaml
+          for f in ["plugins/edulage.yml", "config.public.yml", "infra/keycloak/docker-compose.yml"]:
+              yaml.safe_load(open(f)); print("ok", f)
+          EOF
+      - name: No secrets committed
+        run: |
+          ! git grep -nE '(sk_(live|test)_[A-Za-z0-9]{20,}|BEGIN (RSA |OPENSSH )?PRIVATE KEY|dop_v1_[A-Za-z0-9]{20,})' -- . ':!.github/workflows/ci.yml'
