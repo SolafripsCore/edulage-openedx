@@ -2,8 +2,16 @@
   "realm": "edulage",
   "enabled": true,
   "displayName": "EduLage",
-  "registrationAllowed": false,
-  "loginTheme": "keycloak",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "bruteForceProtected": true,
+  "loginTheme": "edulage",
+  "emailTheme": "edulage",
   "clients": [
     {
       "clientId": "openedx",

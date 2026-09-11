@@ -1,0 +1,20 @@
+{% load i18n %}{% autoescape off %}
+{% blocktrans %}Thank you, {{ learner_name }}.{% endblocktrans %}
+
+{% blocktrans trimmed %}Your payment for {{ course_title }} ({{ institution }}) has been received and you are enrolled. This is your receipt.{% endblocktrans %}
+
+{% trans "Reference:" %} {{ reference }}
+{% trans "Amount:" %} {{ currency }} {{ amount }}
+{% trans "Paid:" %} {{ paid_at }}{% if channel %} ({{ channel }}){% endif %}
+{% trans "Course:" %} {{ course_title }}
+{% trans "Institution:" %} {{ institution }}
+
+{% trans "Start learning:" %} {{ course_url }}
+{% trans "My learning:" %} {{ my_learning_url }}
+
+{% blocktrans trimmed %}The course fee is set by and payable to {{ institution }}; EduLage processes the payment on its behalf. Billing questions: {{ billing_email }}.{% endblocktrans %}
+
+--
+{{ platform_name }} — The Global Education Village
+{{ site_url }}
+{% endautoescape %}

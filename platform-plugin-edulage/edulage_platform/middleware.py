@@ -5,22 +5,35 @@ Request-time enforcement that Open edX does not provide on its own:
   authenticated by the ``edx-jwt-cookie`` pair, which ``JwtAuthentication`` accepts for inactive
   users until the cookie expires; the cookies are cleared on the way out;
 * sessions flagged as staff at SSO time are clamped to ``EDULAGE_STAFF_SESSION_SECONDS`` (idle
-  timeout) after Open edX's login view has set its own multi-week expiry.
+  timeout) after Open edX's login view has set its own multi-week expiry;
+* the LMS's own sign-in/registration pages (``/login``, ``/register`` and their aliases, which
+  otherwise forward to the authn MFE form with a "Sign in with EduLage" button) send anonymous
+  visitors straight to the EduLage IdP, so there is one sign-in page for learners, institution
+  staff and EduLage admins alike. Studio reaches the same path via its LMS OAuth2 hop.
+  ``?el_password=1`` keeps the stock form reachable for the platform superuser.
 
 Installed after ``AuthenticationMiddleware`` and before the view (see settings.common).
 """
 import base64
 import json
 import logging
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.utils.http import url_has_allowed_host_and_scheme
+
+from .auth import REGISTER_PARAM
+from .status import render_status
 
 log = logging.getLogger(__name__)
 User = get_user_model()
 
 STAFF_SESSION_KEY = "edulage_staff"
+PASSWORD_LOGIN_PARAM = "el_password"
+LOGIN_PATHS = {"/login", "/signin"}
+REGISTER_PATHS = {"/register", "/signup", "/create_account"}
 
 
 def _jwt_cookie_names():
@@ -44,6 +57,13 @@ def _username_from_jwt_cookie(request):
     return data.get("preferred_username") or data.get("username")
 
 
+def _wants_html(request):
+    if request.path.startswith("/api/") or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return False
+    accept = request.headers.get("Accept", "")
+    return "text/html" in accept or "*/*" in accept or not accept
+
+
 class AccountStatusMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -52,6 +72,9 @@ class AccountStatusMiddleware:
         refused = self._refuse_if_suspended(request)
         if refused is not None:
             return refused
+        sso = self._single_sign_in(request)
+        if sso is not None:
+            return sso
         response = self.get_response(request)
         self._clamp_staff_session(request)
         return response
@@ -66,10 +89,33 @@ class AccountStatusMiddleware:
             username = _username_from_jwt_cookie(request)
             if not username or User.objects.filter(username=username, is_active=True).exists():
                 return None
-        response = HttpResponseForbidden("Your account has been suspended.")
+        if _wants_html(request):
+            response = render_status(request, "suspended")
+        else:
+            response = HttpResponseForbidden("Your account has been suspended.")
         for name in _jwt_cookie_names():
             response.delete_cookie(name, domain=settings.SESSION_COOKIE_DOMAIN or None)
         return response
+
+    def _single_sign_in(self, request):
+        if settings.SERVICE_VARIANT != "lms" or request.method != "GET" or request.user.is_authenticated:
+            return None
+        path = request.path.rstrip("/") or "/"
+        if path in LOGIN_PATHS:
+            register = False
+        elif path in REGISTER_PATHS:
+            register = True
+        else:
+            return None
+        if request.GET.get(PASSWORD_LOGIN_PARAM) == "1" or not settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"):
+            return None
+        nxt = request.GET.get("next", "/dashboard")
+        if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+            nxt = "/dashboard"
+        query = {"auth_entry": "login", "next": nxt}
+        if register:
+            query[REGISTER_PARAM] = "1"
+        return HttpResponseRedirect(f"/auth/login/edulage/?{urlencode(query)}")
 
     def _clamp_staff_session(self, request):
         session = getattr(request, "session", None)

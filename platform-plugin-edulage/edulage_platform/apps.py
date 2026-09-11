@@ -1,4 +1,7 @@
+from importlib import import_module
+
 from django.apps import AppConfig
+from django.conf import settings
 
 
 class EdulagePlatformConfig(AppConfig):
@@ -10,8 +13,8 @@ class EdulagePlatformConfig(AppConfig):
         "url_config": {
             "lms.djangoapp": {
                 "namespace": "edulage",
-                "regex": r"^edulage/api/",
-                "relative_path": "api.urls",
+                "regex": r"^edulage/",
+                "relative_path": "urls",
             },
         },
         "settings_config": {
@@ -23,3 +26,9 @@ class EdulagePlatformConfig(AppConfig):
             },
         },
     }
+
+    def ready(self):
+        if settings.SERVICE_VARIANT == "lms":
+            import_module("edulage_platform.signals")
+        elif settings.SERVICE_VARIANT == "cms":
+            import_module("edulage_platform.catalogue").connect_cms_signals()

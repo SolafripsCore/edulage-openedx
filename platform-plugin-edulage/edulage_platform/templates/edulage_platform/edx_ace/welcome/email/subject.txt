@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Welcome to EduLage, {{ learner_name }}{% endblocktrans %}{% endautoescape %}
