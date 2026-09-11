@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Invitation from {{ org_name }} · {{ platform_name }}</title>
+  <link rel="icon" href="{{ brand_url }}/favicon.ico">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/inter-latin.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="{{ brand_url }}/fonts/plusjakartasans-latin.woff2">
+  {% include "edulage_platform/_brand_style.html" %}
+  <style>
+    .role { margin: 20px 0 0; padding: 14px 16px; border-radius: 0.75rem; background: var(--surface); border: 1px solid var(--line); font-size: 0.9375rem; line-height: 1.6; color: var(--ink-600); }
+    .role b { color: var(--ink-900); }
+    .actions form { display: inline; }
+    .actions button { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="{{ site_url }}" aria-label="EduLage home"><img src="{{ brand_url }}/images/edulage-logo.png" alt="EduLage"></a>
+      <a class="back" href="{{ site_url }}">← Back to EduLage</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="card" aria-labelledby="invite-title">
+        {% if outcome == "accepted" %}
+          <span class="eyebrow">You're in</span>
+          <h1 id="invite-title">Welcome to the {{ org_name }} team.</h1>
+          <p>You now hold the role below on EduLage. {% if invitation.role == "instructor" or invitation.role == "teaching_assistant" %}Open the course from My learning to reach its teaching tools.{% else %}Studio is where you build and run your institution's courses.{% endif %} At your next sign-in you'll be asked to set up an authenticator app — required for all staff accounts.</p>
+        {% elif outcome == "confirm" %}
+          <span class="eyebrow">Invitation</span>
+          <h1 id="invite-title">Join {{ org_name }} on EduLage</h1>
+          <p>You're signed in as <b>{{ invitation.email }}</b>. Accept to take up the role below; it becomes active immediately.</p>
+        {% elif outcome == "anonymous" %}
+          <span class="eyebrow">Invitation</span>
+          <h1 id="invite-title">You've been invited to join {{ org_name }}</h1>
+          <p>Sign in to EduLage with <b>{{ invitation.email }}</b> to accept — or create an account with that address if you don't have one yet.</p>
+        {% elif outcome == "wrong-account" %}
+          <span class="eyebrow warn">Different account</span>
+          <h1 id="invite-title">This invitation is for another e-mail address</h1>
+          <p>It was sent to <b>{{ invitation.email }}</b> but you're signed in as <b>{{ account_email }}</b>. Sign out and sign in (or create an account) with the invited address, or ask {{ org_name }} to re-send it to this one.</p>
+        {% elif outcome == "failed" %}
+          <span class="eyebrow warn">Please try again</span>
+          <h1 id="invite-title">We couldn't activate the role just now</h1>
+          <p>The identity service didn't respond. Nothing has changed — try again in a few minutes, or contact support.</p>
+        {% elif outcome == "expired" %}
+          <span class="eyebrow warn">Expired</span>
+          <h1 id="invite-title">This invitation has expired</h1>
+          <p>Invitations are valid for {{ expiry_days }} days. Ask {{ org_name }} to send a new one.</p>
+        {% elif outcome == "revoked" %}
+          <span class="eyebrow warn">Withdrawn</span>
+          <h1 id="invite-title">This invitation was withdrawn</h1>
+          <p>{{ org_name }} cancelled it. If you think that's a mistake, contact them directly.</p>
+        {% endif %}
+
+        {% if outcome != "expired" and outcome != "revoked" %}
+        <p class="role"><b>{{ invitation.role_label }}</b> at <b>{{ org_name }}</b>{% if invitation.course_id %}<br>Course run: {{ invitation.course_id }}{% endif %}</p>
+        {% endif %}
+
+        <div class="actions">
+          {% if outcome == "confirm" %}
+            <form method="post">{% csrf_token %}<button class="btn btn-primary" type="submit">Accept invitation</button></form>
+            <a class="btn btn-secondary" href="/dashboard">Not now</a>
+          {% elif outcome == "anonymous" %}
+            <a class="btn btn-primary" href="?go=signin">Sign in</a>
+            <a class="btn btn-secondary" href="?go=register">Create account</a>
+          {% elif outcome == "accepted" %}
+            {% if studio_url and invitation.role != "instructor" and invitation.role != "teaching_assistant" %}<a class="btn btn-primary" href="{{ studio_url }}">Open Studio</a>{% else %}<a class="btn btn-primary" href="/dashboard">My learning</a>{% endif %}
+            {% if invitation.role == "institution_admin" %}<a class="btn btn-secondary" href="{{ console_url }}">Institution console</a>{% else %}<a class="btn btn-secondary" href="{{ site_url }}">EduLage home</a>{% endif %}
+          {% elif outcome == "wrong-account" %}
+            <a class="btn btn-primary" href="/logout">Sign out</a>
+            <a class="btn btn-secondary" href="/dashboard">My learning</a>
+          {% elif outcome == "failed" %}
+            <form method="post">{% csrf_token %}<button class="btn btn-primary" type="submit">Try again</button></form>
+            <a class="btn btn-secondary" href="/dashboard">My learning</a>
+          {% else %}
+            <a class="btn btn-primary" href="{{ site_url }}">EduLage home</a>
+            <a class="btn btn-secondary" href="/dashboard">My learning</a>
+          {% endif %}
+        </div>
+        {% if support_email %}
+        <p class="support">Need help? Write to <a href="mailto:{{ support_email }}">{{ support_email }}</a>.</p>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p style="color: inherit; font-size: inherit;">© {% now "Y" %} EduLage.org. All rights reserved.</p>
+      <nav aria-label="Legal">
+        <a href="{{ site_url }}/privacy">Privacy</a>
+        <a href="{{ site_url }}/terms">Terms</a>
+        <a href="{{ site_url }}/help">Help &amp; support</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

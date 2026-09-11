@@ -1,0 +1,101 @@
+{% extends 'ace_common/edx_ace/common/base_body.html' %}
+{% load i18n %}
+{% load ace %}
+
+{% block preview_text %}{% blocktrans %}{{ institution }} has awarded you a {{ credential }} for {{ course_title }}. EduLage has recorded it.{% endblocktrans %}{% endblock %}
+
+{% block content %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td style="padding-bottom:14px;">
+      <span style="display:inline-block;padding:4px 10px;border-radius:999px;background-color:#e7f6f2;color:#0e8e73;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">{% trans "Credential recorded" %}</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:26px;line-height:32px;font-weight:800;letter-spacing:-0.02em;color:#09184f;padding-bottom:16px;">
+      {% blocktrans %}Congratulations, {{ learner_name }}.{% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:26px;color:#475569;padding-bottom:20px;">
+      {% blocktrans trimmed %}
+      <b style="color:#0b1220;">{{ institution }}</b> has awarded and issued your <b style="color:#0b1220;">{{ credential }}</b>
+      for <b style="color:#0b1220;">{{ course_title }}</b>. EduLage holds the record, so employers and other
+      institutions can confirm it is genuine at any time.
+      {% endblocktrans %}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding-bottom:24px;">
+      <!-- credential card: mirrors the certificate's verification block -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td bgcolor="#09184f" style="background-color:#09184f;padding:16px 20px;border-bottom:4px solid #10a585;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#2fbd9e;padding-bottom:4px;">
+                  {{ classification }} &middot; {{ credential }}
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:'Plus Jakarta Sans','Inter',Helvetica,Arial,sans-serif;font-size:20px;line-height:26px;font-weight:700;color:#ffffff;">
+                  {{ course_title }}
+                </td>
+              </tr>
+              <tr>
+                <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;color:#cbd5e1;padding-top:4px;">
+                  {{ institution }}{% if programme_title %} &middot; {{ programme_title }}{% endif %}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td bgcolor="#f7f9fc" style="background-color:#f7f9fc;padding:14px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="el-col" width="50%" valign="top" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#475569;padding-right:12px;">
+                  <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">{% trans "Awarded and issued by" %}</span>
+                  {{ institution }}
+                </td>
+                <td class="el-col" width="50%" valign="top" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#475569;">
+                  <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">{% trans "Recorded and verified by" %}</span>
+                  EduLage
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding-top:12px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#475569;">
+                  <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;">{% trans "Credential ID" %}</span>
+                  <span style="font-family:Menlo,Consolas,'Courier New',monospace;font-size:13px;color:#0b1220;word-break:break-all;">{{ credential_id }}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      {% with course_cta_url=certificate_url course_cta_text=_("View your certificate") %}
+        {% include 'ace_common/edx_ace/common/return_to_course_cta.html' %}
+      {% endwith %}
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;color:#475569;padding-top:4px;padding-bottom:12px;">
+      {% trans "Share the verification link with anyone who needs to confirm your credential:" %}<br/>
+      <a href="{% with_link_tracking verify_url %}" style="color:#0e8e73;text-decoration:underline;word-break:break-all;">{{ verify_url }}</a>
+    </td>
+  </tr>
+  <tr>
+    <td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:22px;color:#475569;">
+      {% blocktrans trimmed %}
+      Your certificate stays available in <a href="{{ my_learning_url }}" style="color:#0e8e73;text-decoration:underline;">My learning</a>.
+      The awarding institution remains responsible for the academic decision; for a correction to your name or
+      details, write to <a href="mailto:{{ support_email }}" style="color:#0e8e73;text-decoration:underline;">{{ support_email }}</a>.
+      {% endblocktrans %}
+    </td>
+  </tr>
+</table>
+{% endblock %}

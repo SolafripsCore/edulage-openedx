@@ -1,0 +1,11 @@
+{{ heading }}
+
+{% for paragraph in paragraphs %}{{ paragraph }}
+
+{% endfor %}{% for label, value in details %}{{ label }}: {{ value|default:"—" }}
+{% endfor %}{% if action_url %}
+{{ action_label }}: {{ action_url }}
+{% endif %}{% if footnote %}
+{{ footnote }}
+{% endif %}
+EduLage · {{ site_url }} · {{ help_url }}

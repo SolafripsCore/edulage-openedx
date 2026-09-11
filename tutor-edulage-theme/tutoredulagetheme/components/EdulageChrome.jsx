@@ -81,6 +81,7 @@ const elConfig = () => {
     dashboard: cfg.LEARNER_DASHBOARD_URL || `${lms}/dashboard`,
     login: cfg.LOGIN_URL || `${lms}/login`,
     logout: cfg.LOGOUT_URL || `${lms}/logout`,
+    register: `${lms}/edulage/register/`,
     account: cfg.ACCOUNT_SETTINGS_URL || `${lms}/account/settings`,
     profile: cfg.ACCOUNT_PROFILE_URL || lms,
     studio: cfg.STUDIO_BASE_URL || '',
@@ -130,7 +131,7 @@ const ElAccountMenu = ({ user, c, open, setOpen }) => {
     return (
       <>
         <ElButton href={c.login} variant="secondary" compact>Sign in</ElButton>
-        <ElButton href={`${c.site}/programmes`} compact>Explore programmes</ElButton>
+        <ElButton href={c.register} compact>Create account</ElButton>
       </>
     );
   }
@@ -158,6 +159,7 @@ const ElAccountMenu = ({ user, c, open, setOpen }) => {
               <span>{user.email}</span>
             </div>
             <a role="menuitem" href={c.dashboard}>My learning</a>
+            <a role="menuitem" href={c.site}>EduLage home</a>
             <a role="menuitem" href={`${c.profile}/u/${user.username}`}>Profile</a>
             <a role="menuitem" href={c.account}>Account settings</a>
             {isStaff && c.studio && <a role="menuitem" href={c.studio}>Studio</a>}
@@ -203,6 +205,25 @@ const EdulageHeader = ({ course }) => {
     };
   }, []);
 
+  // Sign-in page (frontend-app-authn has no slots): add the "Create account" line under the
+  // EduLage SSO button once the form has rendered. Registration lives on the IdP, not in the MFE.
+  useEffect(() => {
+    if (authenticatedUser || !/^\/authn\/login/.test(window.location.pathname)) { return undefined; }
+    const inject = () => {
+      const social = document.querySelector('form[name="sign-in-form"] > .row.m-0');
+      if (!social || social.querySelector('.el-authn-register')) { return Boolean(social); }
+      const p = document.createElement('p');
+      p.className = 'el-authn-register';
+      p.innerHTML = `New to EduLage? <a href="${c.register}">Create account</a>`;
+      social.appendChild(p);
+      return true;
+    };
+    if (inject()) { return undefined; }
+    const observer = new MutationObserver(() => { if (inject()) { observer.disconnect(); } });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!open) { return undefined; }
     const previousOverflow = document.body.style.overflow;
@@ -214,7 +235,7 @@ const EdulageHeader = ({ course }) => {
     setSearchOpen((v) => !v); setStudyOpen(false); setOpen(false); setUserOpen(false);
   }, []);
 
-  const homeHref = authenticatedUser ? c.dashboard : c.site;
+  const homeHref = c.site;
   const siteLink = (href) => `${c.site}${href}`;
 
   return (
@@ -334,6 +355,7 @@ const EdulageHeader = ({ course }) => {
               {authenticatedUser && (
                 <>
                   <a href={c.dashboard} className="el-drawer__primary">My learning</a>
+                  <a href={c.site} className="el-drawer__primary">EduLage home</a>
                   <a href={`${c.profile}/u/${authenticatedUser.username}`} className="el-drawer__primary">Profile</a>
                   <a href={c.account} className="el-drawer__primary">Account settings</a>
                 </>
@@ -360,7 +382,7 @@ const EdulageHeader = ({ course }) => {
               ) : (
                 <>
                   <ElButton href={c.login} variant="secondary">Sign in</ElButton>
-                  <ElButton href={`${c.site}/programmes`}>Explore programmes</ElButton>
+                  <ElButton href={c.register}>Create account</ElButton>
                 </>
               )}
             </div>
@@ -445,6 +467,12 @@ const EdulageStudioFooter = () => {
   return (
     <footer className="el-footer el-footer--compact" role="contentinfo">
       <div className="el-container">
+        <nav className="el-footer__legal" aria-label="EduLage">
+          <a href={c.site}>EduLage home</a>
+          <a href={c.dashboard}>My learning</a>
+          <a href={`${c.site}/for-institutions`}>For institutions</a>
+          <a href={`${c.site}/help`}>Help & support</a>
+        </nav>
         <ElFooterLegal c={c} />
       </div>
     </footer>
@@ -460,16 +488,65 @@ const EdulageNoCoursesView = () => {
   return (
     <section className="el-empty" aria-labelledby="el-empty-title">
       <p className="el-eyebrow">My learning</p>
-      <h2 id="el-empty-title" className="el-empty__title">You are not enrolled in any programme yet</h2>
+      <h2 id="el-empty-title" className="el-empty__title">Welcome to My learning</h2>
       <p className="el-empty__text">
-        Enrolled programmes and courses appear here once an institution has approved your
-        admission. Browse the EduLage catalogue to find accredited programmes from
-        participating tertiary institutions.
+        Your EduLage account is ready. Join a free or paid short course and it appears here
+        straight away; degrees and selective programmes appear as soon as the institution
+        admits you. Browse the catalogue to find programmes from participating institutions.
       </p>
       <div className="el-empty__actions">
         <ElButton href={`${c.site}/programmes`}>Explore programmes</ElButton>
         <ElButton href={`${c.site}/help`} variant="secondary">Help &amp; support</ElButton>
       </div>
+    </section>
+  );
+};
+
+/** The signed-in learner's applications (admission-required programmes), newest first. */
+const useElApplications = () => {
+  const [apps, setApps] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/applications/`)
+      .then((r) => { if (alive) { setApps(r.data.applications || []); } })
+      .catch(() => { if (alive) { setApps([]); } });
+    return () => { alive = false; };
+  }, []);
+  return apps;
+};
+
+const EL_APP_TONE = { admitted: 'ok', declined: 'bad', withdrawn: 'muted', deferred: 'muted' };
+
+/** Learner dashboard — "Applications" panel: status of each admission-required programme applied for. */
+const EdulageApplicationsPanel = () => {
+  const c = elConfig();
+  const apps = useElApplications();
+  if (!apps) { return null; }
+  return (
+    <section className="el-apps" aria-labelledby="el-apps-title">
+      <p className="el-eyebrow">Applications</p>
+      <h2 id="el-apps-title" className="el-apps__title">Admission-required programmes</h2>
+      {apps.length === 0 ? (
+        <p className="el-apps__empty">
+          You have no applications yet. Degrees and selective programmes need the institution&apos;s
+          admission; <a href={`${c.site}/programmes`}>find a programme</a> and apply from its page.
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {apps.map((a) => (
+            <li key={`${a.course_id}-${a.application_id}`} className="el-apps__item">
+              <div>
+                <p className="el-apps__programme">{a.programme_title || a.course_id}</p>
+                <p className="el-apps__meta">{a.institution_name}{a.credential ? ` · ${a.credential}` : ''}</p>
+              </div>
+              <span className={`el-apps__status el-apps__status--${EL_APP_TONE[a.status] || 'open'}`}>{a.status_label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 };
@@ -484,6 +561,8 @@ const EdulageDashboardSidebar = () => {
     ['Learner support', c.support, 'Help with access, enrolment and your learning schedule.'],
   ];
   return (
+    <>
+    <EdulageApplicationsPanel />
     <aside className="el-side" aria-label="EduLage services">
       <p className="el-eyebrow">EduLage</p>
       <ul className="el-side__list">
@@ -495,5 +574,192 @@ const EdulageDashboardSidebar = () => {
         ))}
       </ul>
     </aside>
+    </>
+  );
+};
+
+/**
+ * Learner dashboard — "My Learning" course list (course_list slot).
+ * Replaces the stock Open edX course cards with EduLage cards: institution (name + logo),
+ * classification (degree / short course / CPD ...), programme, run dates, progress and a single
+ * "Continue learning" action. Classification and institution identity come from the EduLage
+ * catalogue (platform plugin, /edulage/api/v1/dashboard/courses/); progress from the course
+ * home API. Everything degrades gracefully: without listing data the card shows the Open edX
+ * organisation, without progress data the bar is hidden.
+ */
+const elFormatDate = (value) => {
+  if (!value) { return null; }
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) { return null; }
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const elRunDates = (run) => {
+  const start = elFormatDate(run?.startDate);
+  const end = elFormatDate(run?.endDate);
+  if (start && end) { return `${start} – ${end}`; }
+  if (start) { return `Starts ${start}`; }
+  if (end) { return `Ends ${end}`; }
+  return run?.advertisedStart ? `Starts ${run.advertisedStart}` : 'Self-paced';
+};
+
+const useElListings = (courseIds) => {
+  const [listings, setListings] = useState({});
+  const key = courseIds.join('|');
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms || !courseIds.length) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/courses/`)
+      .then(({ data }) => {
+        if (!alive) { return; }
+        const byId = {};
+        (data?.courses || []).forEach((row) => { byId[row.course_id] = row; });
+        setListings(byId);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return listings;
+};
+
+const useElProgress = (courseId, enabled) => {
+  const [progress, setProgress] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!enabled || !c.lms || !courseId) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/api/course_home/progress/${courseId}`)
+      .then(({ data }) => {
+        if (!alive) { return; }
+        const s = data?.completion_summary || data?.completionSummary;
+        if (!s) { return; }
+        const complete = s.complete_count ?? s.completeCount ?? 0;
+        const incomplete = s.incomplete_count ?? s.incompleteCount ?? 0;
+        const locked = s.locked_count ?? s.lockedCount ?? 0;
+        const total = complete + incomplete + locked;
+        setProgress(total ? Math.round((complete / total) * 100) : null);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [courseId, enabled]);
+  return progress;
+};
+
+const ElCourseCard = ({ item, listing, c }) => {
+  const course = item.course || {};
+  const run = item.courseRun || {};
+  const enrollment = item.enrollment || {};
+  const access = enrollment.coursewareAccess || {};
+  const hasAccess = access.isStaff || !(access.hasUnmetPrereqs || access.isTooEarly);
+  const started = Boolean(enrollment.hasStarted);
+  const archived = Boolean(run.isArchived);
+  const passed = Boolean(item.gradeData?.isPassing);
+  const certificate = item.certificate || {};
+  const progress = useElProgress(run.courseId, started && !archived);
+  const progressStyle = { width: `${progress || 0}%` };
+
+  const institutionName = listing?.institution_name || item.courseProvider?.name || run.courseId?.split(':')[1]?.split('+')[0] || '';
+  const institutionLogo = listing?.institution_logo || '';
+  const classification = listing?.classification_label || 'Course';
+  const lmsUrl = (path) => (path ? (path.startsWith('http') ? path : `${c.lms}${path}`) : null);
+  const banner = lmsUrl(course.bannerImgSrc);
+  const href = lmsUrl((started && run.resumeUrl) || run.homeUrl);
+  const progressHref = lmsUrl(run.progressUrl);
+  const certificateHref = lmsUrl(certificate.certPreviewUrl || certificate.downloadUrls?.preview || certificate.downloadUrls?.download);
+
+  let status = 'Not started';
+  let statusTone = 'muted';
+  if (archived) { status = passed ? 'Completed' : 'Ended'; statusTone = passed ? 'done' : 'muted'; }
+  else if (!run.isStarted) { status = 'Starts soon'; statusTone = 'upcoming'; }
+  else if (started) { status = 'In progress'; statusTone = 'active'; }
+
+  let actionLabel = 'Start learning';
+  if (archived) { actionLabel = 'Review course'; }
+  else if (started) { actionLabel = 'Continue learning'; }
+
+  return (
+    <article className="el-course" aria-labelledby={`${item.cardId}-title`}>
+      <div className="el-course__media">
+        {banner ? (
+          <img src={banner} alt="" loading="lazy" />
+        ) : <div className="el-course__media-fallback" aria-hidden="true" />}
+        <span className="el-course__pill">{listing?.credential || classification}</span>
+        {institutionLogo && (
+          <span className="el-course__logo"><img src={institutionLogo} alt="" /></span>
+        )}
+      </div>
+      <div className="el-course__body">
+        <div className="el-course__meta-row">
+          <p className="el-course__institution">
+            {listing?.institution_url ? <a href={listing.institution_url}>{institutionName}</a> : institutionName}
+          </p>
+          <span className={`el-course__status el-course__status--${statusTone}`}>{status}</span>
+        </div>
+        <h3 id={`${item.cardId}-title`} className="el-course__title">
+          {href && hasAccess ? <a href={href}>{course.courseName}</a> : course.courseName}
+        </h3>
+        {listing?.programme_title && (
+          <p className="el-course__programme">
+            Part of {listing.programme_url ? <a href={listing.programme_url}>{listing.programme_title}</a> : listing.programme_title}
+          </p>
+        )}
+        <ul className="el-course__facts">
+          <li>{classification}</li>
+          <li>{elRunDates(run)}</li>
+          {listing?.delivery_mode && <li>{listing.delivery_mode}</li>}
+          {course.courseNumber && <li>{course.courseNumber}</li>}
+        </ul>
+        {progress !== null && (
+          <div className="el-course__progress" role="progressbar" aria-valuenow={progress} aria-valuemin="0" aria-valuemax="100" aria-label="Course progress">
+            <div className="el-course__progress-track"><span style={progressStyle} /></div>
+            <span className="el-course__progress-label">{progress}% complete</span>
+          </div>
+        )}
+        <div className="el-course__actions">
+          {href && hasAccess ? <ElButton href={href} compact>{actionLabel}</ElButton>
+            : <ElButton compact disabled aria-disabled="true">{access.isTooEarly ? 'Opens soon' : 'Not available yet'}</ElButton>}
+          {progressHref && started && <ElButton href={progressHref} variant="secondary" compact>Progress</ElButton>}
+          {certificate.isDownloadable && certificateHref && (
+            <ElButton href={certificateHref} variant="secondary" compact>View certificate</ElButton>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+};
+
+const EdulageCourseList = ({ courseListData }) => {
+  const c = elConfig();
+  const { visibleList = [], numPages = 1, setPageNumber } = courseListData || {};
+  const [page, setPage] = useState(1);
+  const ids = visibleList.map((i) => i.courseRun?.courseId).filter(Boolean);
+  const listings = useElListings(ids);
+  const goTo = (n) => { setPage(n); if (setPageNumber) { setPageNumber(n); } };
+  return (
+    <section className="el-courses" aria-label="My learning">
+      <div className="el-courses__list">
+        {visibleList.map((item) => (
+          <ElCourseCard key={item.cardId} item={item} listing={listings[item.courseRun?.courseId]} c={c} />
+        ))}
+      </div>
+      {numPages > 1 && (
+        <nav className="el-courses__pages" aria-label="Pages">
+          {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+            <button
+              key={n}
+              type="button"
+              className={`el-courses__page${n === page ? ' is-active' : ''}`}
+              aria-current={n === page ? 'page' : undefined}
+              onClick={() => goTo(n)}
+            >
+              {n}
+            </button>
+          ))}
+        </nav>
+      )}
+    </section>
   );
 };

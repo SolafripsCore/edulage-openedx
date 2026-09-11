@@ -112,6 +112,11 @@ FRONTEND_BASE_THEME = {
     "variants": {"light": {"url": "{{ EDULAGE_THEME_BRAND_URL }}/light.min.css"}},
 }
 
+# Branded account-status pages rendered by platform-plugin-edulage load fonts/logo from here.
+hooks.Filters.ENV_PATCHES.add_item(
+    ("openedx-common-settings", "EDULAGE_BRAND_URL = '{{ EDULAGE_THEME_BRAND_URL }}'\n")
+)
+
 hooks.Filters.ENV_PATCHES.add_item(
     (
         "mfe-lms-common-settings",
@@ -204,11 +209,15 @@ PLUGIN_SLOTS.add_item(
 # "Looking for a new challenge?" course-discovery widgets (discovery lives on edulage.org).
 NO_COURSES_SLOT = "org.openedx.frontend.learner_dashboard.no_courses_view.v1"
 WIDGET_SIDEBAR_SLOT = "org.openedx.frontend.learner_dashboard.widget_sidebar.v1"
+COURSE_LIST_SLOT = "org.openedx.frontend.learner_dashboard.course_list.v1"
 PLUGIN_SLOTS.add_item(
     ("learner-dashboard", NO_COURSES_SLOT, HIDE_DEFAULT + _insert("edulage_no_courses", "EdulageNoCoursesView"))
 )
 PLUGIN_SLOTS.add_item(
     ("learner-dashboard", WIDGET_SIDEBAR_SLOT, HIDE_DEFAULT + _insert("edulage_sidebar", "EdulageDashboardSidebar"))
+)
+PLUGIN_SLOTS.add_item(
+    ("learner-dashboard", COURSE_LIST_SLOT, HIDE_DEFAULT + _insert("edulage_course_list", "EdulageCourseList"))
 )
 
 # frontend-base applications (instructor-dashboard, notifications, ...) render the shell's

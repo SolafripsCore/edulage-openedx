@@ -6,6 +6,8 @@ ID: Mhrlm6LAIiBt3CXSPqvQh0ry
 LANGUAGE_CODE: en
 LMS_HOST: learn.edulage.org
 PLATFORM_NAME: EduLage
+# Tutor default (2) queues requests at ~30 active learners on the 4 vCPU pilot; see docs §14.11.
+OPENEDX_LMS_UWSGI_WORKERS: 6
 INDIGO_PRIMARY_COLOR: '#09184f'
 INDIGO_WELCOME_MESSAGE: The Global Education Village
 INDIGO_ENABLE_DARK_TOGGLE: false
