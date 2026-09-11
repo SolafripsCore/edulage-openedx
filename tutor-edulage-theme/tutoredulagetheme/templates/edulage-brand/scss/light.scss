@@ -1,0 +1,202 @@
+// Paragon "light" variant override: maps every Paragon color token onto the EduLage palette.
+// Loaded after @openedx/paragon/dist/light.min.css (see PARAGON_THEME_URLS.variants.light.urls.brandOverride).
+@use "tokens" as t;
+
+:root,
+[data-paragon-theme-variant="light"] {
+  // ---- primary = navy (site: bg-navy-800, hover navy-700, text navy-800)
+  --pgn-color-primary-base: #{t.$navy-800};
+  --pgn-color-primary-100: #eef1f8;
+  --pgn-color-primary-200: #cdd4e8;
+  --pgn-color-primary-300: #9aa7c9;
+  --pgn-color-primary-400: #5f6f9f;
+  --pgn-color-primary-500: #{t.$navy-800};
+  --pgn-color-primary-600: #{t.$navy-800};
+  --pgn-color-primary-700: #{t.$navy-700};
+  --pgn-color-primary-800: #{t.$navy-800};
+  --pgn-color-primary-900: #{t.$navy-900};
+  --pgn-color-theme-hover-primary: #{t.$navy-700};
+  --pgn-color-theme-active-primary: #{t.$navy-900};
+  --pgn-color-theme-focus-primary: #{t.$teal-500};
+
+  // ---- brand = teal (site: bg-teal-600, hover -> navy-800)
+  --pgn-color-brand-base: #{t.$teal-600};
+  --pgn-color-brand-100: #e6f5f1;
+  --pgn-color-brand-200: #bfe8dd;
+  --pgn-color-brand-300: #86d3bf;
+  --pgn-color-brand-400: #{t.$teal-400};
+  --pgn-color-brand-500: #{t.$teal-500};
+  --pgn-color-brand-600: #{t.$teal-600};
+  --pgn-color-brand-700: #0b7a63;
+  --pgn-color-brand-800: #0a6653;
+  --pgn-color-brand-900: #084f41;
+  --pgn-color-theme-hover-brand: #{t.$navy-800};
+  --pgn-color-theme-active-brand: #{t.$navy-900};
+  --pgn-color-theme-focus-brand: #{t.$teal-500};
+
+  // ---- secondary / neutrals = ink + slate
+  --pgn-color-secondary-base: #{t.$ink-600};
+  --pgn-color-secondary-100: #{t.$surface};
+  --pgn-color-secondary-200: #{t.$line};
+  --pgn-color-secondary-300: #{t.$slate-300};
+  --pgn-color-secondary-400: #{t.$ink-400};
+  --pgn-color-secondary-500: #{t.$ink-600};
+  --pgn-color-secondary-600: #{t.$ink-600};
+  --pgn-color-secondary-700: #{t.$slate-700};
+  --pgn-color-secondary-800: #{t.$slate-800};
+  --pgn-color-secondary-900: #{t.$ink-900};
+  --pgn-color-theme-hover-secondary: #{t.$slate-700};
+  --pgn-color-theme-active-secondary: #{t.$slate-800};
+  --pgn-color-theme-focus-secondary: #{t.$teal-500};
+
+  --pgn-color-gray-100: #{t.$surface};
+  --pgn-color-gray-200: #{t.$line};
+  --pgn-color-gray-300: #{t.$slate-300};
+  --pgn-color-gray-400: #{t.$ink-400};
+  --pgn-color-gray-500: #{t.$slate-500};
+  --pgn-color-gray-600: #{t.$ink-600};
+  --pgn-color-gray-700: #{t.$slate-700};
+  --pgn-color-gray-800: #{t.$slate-800};
+  --pgn-color-gray-900: #{t.$ink-900};
+
+  --pgn-color-light-base: #{t.$surface};
+  --pgn-color-light-100: #{t.$white};
+  --pgn-color-light-200: #{t.$surface};
+  --pgn-color-light-300: #eef2f7;
+  --pgn-color-light-400: #{t.$line};
+  --pgn-color-light-500: #{t.$line};
+  --pgn-color-light-700: #{t.$slate-300};
+  --pgn-color-light-900: #{t.$ink-400};
+
+  --pgn-color-dark-base: #{t.$navy-900};
+  --pgn-color-dark-100: #{t.$navy-600};
+  --pgn-color-dark-200: #{t.$navy-700};
+  --pgn-color-dark-300: #{t.$navy-800};
+  --pgn-color-dark-500: #{t.$navy-900};
+  --pgn-color-dark-700: #{t.$navy-900};
+  --pgn-color-dark-900: #04091f;
+  --pgn-color-black: #{t.$ink-900};
+
+  // ---- semantic
+  --pgn-color-info-base: #{t.$navy-600};
+  --pgn-color-info-100: #eef1f8;
+  --pgn-color-info-300: #9aa7c9;
+  --pgn-color-info-500: #{t.$navy-600};
+  --pgn-color-info-700: #{t.$navy-800};
+  --pgn-color-success-base: #{t.$teal-600};
+  --pgn-color-success-100: #e6f5f1;
+  --pgn-color-success-300: #86d3bf;
+  --pgn-color-success-500: #{t.$teal-600};
+  --pgn-color-success-700: #0a6653;
+  --pgn-color-warning-base: #d97706;
+  --pgn-color-warning-100: #fff7ed;
+  --pgn-color-warning-300: #fdba74;
+  --pgn-color-warning-500: #d97706;
+  --pgn-color-warning-700: #9a3412;
+  --pgn-color-danger-base: #b91c1c;
+  --pgn-color-danger-100: #fef2f2;
+  --pgn-color-danger-300: #fca5a5;
+  --pgn-color-danger-500: #b91c1c;
+  --pgn-color-danger-700: #7f1d1d;
+  --pgn-color-accent-a: #{t.$teal-500};
+  --pgn-color-accent-b: #{t.$navy-600};
+
+  // ---- body, surfaces, borders, text
+  --pgn-color-body-base: #{t.$ink-900};
+  --pgn-color-body-bg: #{t.$white};
+  --pgn-color-bg-base: #{t.$white};
+  --pgn-color-headings-base: #{t.$navy-800};
+  --pgn-color-text-muted: #{t.$ink-600};
+  --pgn-color-border: #{t.$line};
+  --pgn-color-hr-border: #{t.$line};
+  --pgn-color-link-base: #{t.$teal-600};
+  --pgn-color-link-hover: #{t.$navy-800};
+  --pgn-color-link-brand: #{t.$teal-600};
+  --pgn-color-link-brand-hover: #{t.$navy-800};
+
+  // ---- buttons (site Button.tsx: primary navy/hover navy-700, brand teal/hover navy-800,
+  //      outline-primary = "secondary": white / navy text / line border, hover border navy-800)
+  --pgn-color-btn-bg-primary: #{t.$navy-800};
+  --pgn-color-btn-border-primary: #{t.$navy-800};
+  --pgn-color-btn-hover-bg-primary: #{t.$navy-700};
+  --pgn-color-btn-hover-border-primary: #{t.$navy-700};
+  --pgn-color-btn-active-bg-primary: #{t.$navy-900};
+  --pgn-color-btn-active-border-primary: #{t.$navy-900};
+  --pgn-color-btn-focus-outline-primary: #{t.$teal-500};
+  --pgn-color-btn-bg-brand: #{t.$teal-600};
+  --pgn-color-btn-border-brand: #{t.$teal-600};
+  --pgn-color-btn-hover-bg-brand: #{t.$navy-800};
+  --pgn-color-btn-hover-border-brand: #{t.$navy-800};
+  --pgn-color-btn-active-bg-brand: #{t.$navy-900};
+  --pgn-color-btn-active-border-brand: #{t.$navy-900};
+  --pgn-color-btn-focus-outline-brand: #{t.$teal-500};
+  --pgn-color-btn-text-outline-primary: #{t.$navy-800};
+  --pgn-color-btn-border-outline-primary: #{t.$line};
+  --pgn-color-btn-bg-outline-primary: #{t.$white};
+  --pgn-color-btn-hover-bg-outline-primary: #{t.$white};
+  --pgn-color-btn-hover-text-outline-primary: #{t.$navy-800};
+  --pgn-color-btn-hover-border-outline-primary: #{t.$navy-800};
+  --pgn-color-btn-active-bg-outline-primary: #{t.$surface};
+  --pgn-color-btn-active-text-outline-primary: #{t.$navy-800};
+  --pgn-color-btn-active-border-outline-primary: #{t.$navy-800};
+  --pgn-color-btn-focus-outline-outline-primary: #{t.$teal-500};
+  --pgn-color-btn-text-tertiary: #{t.$navy-800};
+  --pgn-color-btn-hover-bg-tertiary: #{t.$surface};
+  --pgn-color-btn-active-bg-tertiary: #{t.$line};
+  --pgn-color-btn-text-link: #{t.$teal-600};
+  --pgn-color-btn-hover-text-link: #{t.$navy-800};
+
+  // ---- forms
+  --pgn-color-form-input-border: #{t.$line};
+  --pgn-color-form-input-focus-border: #{t.$teal-500};
+  --pgn-color-form-control-focus-border: #{t.$teal-500};
+  --pgn-elevation-form-input-focus-color: #{t.$teal-500};
+  --pgn-color-form-control-placeholder: #{t.$ink-400};
+  --pgn-color-form-control-base: #{t.$ink-900};
+  --pgn-color-form-control-bg: #{t.$white};
+
+  // ---- cards, dropdowns, nav
+  --pgn-color-card-border-base: #{t.$line};
+  --pgn-color-card-bg-base: #{t.$white};
+  --pgn-color-card-bg-muted: #{t.$surface};
+  --pgn-color-card-border-focus-base: #{t.$teal-500};
+  --pgn-color-card-divider-bg: #{t.$line};
+  --pgn-color-dropdown-bg: #{t.$white};
+  --pgn-color-dropdown-border: #{t.$line};
+  --pgn-color-dropdown-link-hover-bg: #{t.$surface};
+  --pgn-color-dropdown-link-active-bg: #{t.$navy-800};
+  --pgn-color-dropdown-link-base: #{t.$ink-900};
+  --pgn-color-nav-tabs-link-active-base: #{t.$navy-800};
+  --pgn-color-nav-tabs-border: #{t.$line};
+  --pgn-color-nav-tabs-link-active-border: #{t.$line} #{t.$line} #{t.$white};
+  --pgn-color-nav-tabs-link-hover-border: #{t.$line};
+  --pgn-color-nav-tabs-link-hover-base: #{t.$navy-800};
+  --pgn-color-nav-tabs-link-hover-bg: #{t.$surface};
+  --pgn-color-nav-tabs-link-active-bg: #{t.$white};
+  --pgn-color-nav-link-base: #{t.$ink-600};
+  --pgn-color-nav-link-hover: #{t.$navy-800};
+  --pgn-color-nav-link-active: #{t.$navy-800};
+  --pgn-color-progress-bg: #{t.$line};
+  --pgn-color-progress-bar-bg: #{t.$teal-600};
+  --pgn-color-badge-primary-bg: #{t.$navy-800};
+  --pgn-color-badge-light-bg: #{t.$surface};
+  --pgn-color-badge-light-text: #{t.$navy-800};
+  --pgn-color-alert-info-bg: #eef1f8;
+  --pgn-color-alert-info-border: #cdd4e8;
+  --pgn-color-alert-info-base: #{t.$navy-800};
+  --pgn-color-alert-success-bg: #e6f5f1;
+  --pgn-color-alert-success-border: #bfe8dd;
+  --pgn-color-alert-success-base: #0a6653;
+  --pgn-color-table-border: #{t.$line};
+  --pgn-color-table-accent-bg: #{t.$surface};
+  --pgn-color-table-hover-bg: #{t.$surface};
+  --pgn-color-pagination-active-bg: #{t.$navy-800};
+  --pgn-color-pagination-active-border: #{t.$navy-800};
+  --pgn-color-pagination-base: #{t.$navy-800};
+  --pgn-color-pagination-hover-bg: #{t.$surface};
+  --pgn-color-toast-bg: #{t.$navy-900};
+  --pgn-color-tooltip-bg: #{t.$navy-900};
+  --pgn-color-popover-border: #{t.$line};
+  --pgn-color-modal-content-border: #{t.$line};
+  --pgn-color-modal-backdrop-bg: #{t.$navy-900};
+}

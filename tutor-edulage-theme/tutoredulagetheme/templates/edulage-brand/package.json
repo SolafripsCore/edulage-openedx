@@ -1,0 +1,23 @@
+{
+  "name": "@edx/brand",
+  "version": "0.0.0-edulage",
+  "private": true,
+  "description": "EduLage design system for Open edX. Drop-in replacement for @edx/brand (Paragon brand override built from edulage.org tokens, fonts, logos and MFE chrome styles).",
+  "license": "UNLICENSED",
+  "exports": {
+    "./*": "./dist/*"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:css": "sass --no-source-map --style=compressed scss/core.scss dist/core.min.css && sass --no-source-map --style=compressed scss/light.scss dist/light-override.min.css",
+    "build:light": "cat node_modules/@openedx/paragon/dist/light.min.css dist/light-override.min.css > dist/light.min.css",
+    "build:assets": "cp -r fonts images dist/ && cp images/favicon.ico dist/favicon.ico && cp images/edulage-logo.png dist/logo.png && cp images/edulage-logo-white.png dist/logo-white.png && cp images/edulage-logo.png dist/logo-trademark.png && cp svg/logo.svg svg/logo-white.svg svg/logo-trademark.svg dist/ && cp theme-urls.json dist/",
+    "build": "rm -rf dist && mkdir -p dist && npm run build:css && npm run build:light && npm run build:assets"
+  },
+  "devDependencies": {
+    "@openedx/paragon": "23.4.5",
+    "sass": "1.89.2"
+  }
+}

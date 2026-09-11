@@ -1,25 +1,64 @@
-# Stand-in EduLage identity provider for the SSO spike. realm-edulage.json ships test users
-# without passwords: run set-test-passwords.sh after the first start. Runs beside Tutor on the same
-# docker network so Tutor's Caddy can proxy https://auth.edulage.org to it (see
-# plugins/edulage.yml, patch `caddyfile`). Production: managed Keycloak / an IdP owned
-# by the EduLage control plane with a real database, not dev-file storage.
+# EduLage identity provider (Keycloak) — pilot deployment.
+#
+# Keycloak is the OIDC issuer for Open edX (https://auth.edulage.org/realms/edulage). It runs on
+# PostgreSQL (persistent, backed up with the Droplet); dev-file/H2 storage is not used. Runs beside
+# Tutor on the same docker network so Tutor's Caddy can proxy https://auth.edulage.org to it (see
+# plugins/edulage.yml, patch `caddyfile`).
+#
+# .env (never committed): KEYCLOAK_ADMIN_PASSWORD, KC_DB_PASSWORD, KC_DB_USERNAME (optional).
+# Moving to a managed PostgreSQL (DigitalOcean) later only changes KC_DB_URL.
+#
+# The realm import (realm-edulage.json) carries the client + protocol mappers and the spike test
+# users. `--import-realm` only imports a realm that does not exist yet, so test users can be
+# disabled with scripts/spike/kc_disable_test_users.sh without being re-created on restart.
+# Staff users belong to the `edulage-staff` group (realm-edulage.json). Production acceptance
+# requires OTP for that group (Authentication → browser flow → conditional OTP on group membership)
+# and for the master-realm admin; the spike realm sets the TOTP policy and brute-force protection
+# but does not force OTP so the scripted SSO suites can run. Realm signing keys rotate via
+# Realm settings → Keys: add a new RS256 provider with higher priority, keep the old key passive
+# until issued tokens expire (accessTokenLifespan=300s), then delete it.
 services:
+  postgres:
+    image: postgres:16.6
+    container_name: edulage-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?set in .env}
+    volumes:
+      - keycloak-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USERNAME:-keycloak} -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [tutor]
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     container_name: edulage-keycloak
+    depends_on:
+      postgres:
+        condition: service_healthy
     command: ["start", "--import-realm", "--http-enabled=true", "--proxy-headers=xforwarded", "--hostname=https://auth.edulage.org"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set in .env}
-      KC_DB: dev-file
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set in .env}
+      KC_HEALTH_ENABLED: "true"
       JAVA_OPTS_KC_HEAP: "-Xms128m -Xmx512m"
     volumes:
       - ./realm-edulage.json:/opt/keycloak/data/import/realm-edulage.json:ro
-      - keycloak-data:/opt/keycloak/data/h2
     restart: unless-stopped
     networks: [tutor]
+
 volumes:
-  keycloak-data:
+  keycloak-pg:
+
 networks:
   tutor:
     external: true

@@ -1,0 +1,46 @@
+// EduLage design tokens — single source of truth is EduLage/src/app/globals.css (Next.js site).
+// Keep the values below byte-identical to that file.
+
+$navy-900: #061034;
+$navy-800: #09184f;
+$navy-700: #14265f;
+$navy-600: #22376f;
+$teal-600: #0e8e73;
+$teal-500: #10a585;
+$teal-400: #2fbd9e;
+$ink-900: #0b1220;
+$ink-600: #475569;
+$ink-400: #94a3b8;
+$line: #e2e8f0;
+$surface: #f7f9fc;
+$white: #ffffff;
+$scrim: rgba(6, 16, 52, 0.72);
+
+// Derived neutrals (Tailwind slate scale used by the site through text-slate-* utilities).
+$slate-300: #cbd5e1;
+$slate-500: #64748b;
+$slate-700: #334155;
+$slate-800: #1e293b;
+
+// Layout (globals.css .container-page / header heights / section spacing)
+$container-max: 1280px;
+$container-gutter: 24px; // (100% - 48px)
+$container-gutter-md: 32px; // (100% - 64px)
+$utility-bar-height: 36px; // h-9
+$header-height: 72px; // h-[72px]
+$section-space: 80px;
+$section-space-md: 112px;
+
+$font-sans: "Inter", Arial, sans-serif;
+$font-heading: "Plus Jakarta Sans", Arial, sans-serif;
+
+$radius-md: 0.375rem; // rounded-md
+$radius-lg: 0.5rem; // rounded-lg
+$radius-xl: 0.75rem; // rounded-xl
+$radius-2xl: 1rem; // rounded-2xl
+
+$shadow-card: 0 12px 24px rgba(6, 16, 52, 0.12); // .card-hover:hover
+$shadow-soft: 0 18px 45px rgba(6, 16, 52, 0.09); // .audience-card:hover
+
+$ease: 180ms ease-out;
+$ease-slow: 220ms ease-out;

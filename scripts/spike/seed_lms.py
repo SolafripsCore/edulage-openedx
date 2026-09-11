@@ -9,12 +9,15 @@ to prove account linking. Idempotent.
 import os
 import secrets
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.contrib.sites.models import Site
 from eox_tenant.models import Route, TenantConfig
 from oauth2_provider.models import Application
 from openedx.core.djangoapps.oauth_dispatch.models import ApplicationAccess
 from organizations.models import Organization
+from social_django.models import UserSocialAuth
 from common.djangoapps.student.models import UserProfile
 from common.djangoapps.third_party_auth.models import OAuth2ProviderConfig
 
@@ -95,6 +98,29 @@ if created:
 UserProfile.objects.get_or_create(user=legacy, defaults={"name": "Ada Learner (legacy)"})
 print("legacy user", legacy.username, legacy.email)
 
+
+def legacy_account(username, email, name):
+    u, was_created = User.objects.get_or_create(username=username, defaults={"email": email, "is_active": True})
+    if was_created:
+        u.set_password(secrets.token_urlsafe(32))
+        u.save()
+    UserProfile.objects.get_or_create(user=u, defaults={"name": name})
+    return u
+
+
+# A realm re-import in the stand-in IdP issues new `sub`s; drop links to the dead identities so
+# the linking proof can start from a clean state (never done against production identities).
+if os.environ.get("EDULAGE_RESET_LINKS") == "1":
+    n, _ = UserSocialAuth.objects.filter(provider="edulage").delete()
+    print("reset edulage identity links:", n)
+
+# Pre-existing account whose email matches IdP user dupe.learner but which is already bound to a
+# different EduLage identity -> the link must be refused. (auth_user.email is unique with a
+# case-insensitive collation on this deployment, so two accounts with the same email cannot exist;
+# the ambiguity guard in pipeline.link_verified_account is defence in depth.)
+taken = legacy_account("dupe_taken", "dupe.learner@example.org", "Dupe Taken")
+UserSocialAuth.objects.get_or_create(provider="edulage", uid="00000000-dead-dead-dead-000000000000", defaults={"user": taken})
+
 # Service identity for the EduLage control plane: OAuth2 client-credentials -> JWT.
 # eox-tenant only issues tokens on hosts listed in redirect_uris, so the client is bound to
 # the platform host and cannot be used from an institution's tenant domain.
@@ -108,6 +134,8 @@ if service_secret:
         svc.set_password(secrets.token_urlsafe(32))
         svc.save()
     UserProfile.objects.get_or_create(user=svc, defaults={"name": "EduLage integration"})
+    group, _ = Group.objects.get_or_create(name=settings.EDULAGE_INTEGRATION_GROUP)
+    svc.groups.add(group)
     app, _ = Application.objects.update_or_create(
         name="edulage-control-plane",
         defaults={

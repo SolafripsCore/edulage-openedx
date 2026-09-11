@@ -4,6 +4,7 @@ from django.apps import AppConfig
 class EdulagePlatformConfig(AppConfig):
     name = "edulage_platform"
     verbose_name = "EduLage Platform Integration"
+    default_auto_field = "django.db.models.BigAutoField"
 
     plugin_app = {
         "url_config": {

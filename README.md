@@ -29,8 +29,8 @@ Secrets (`*_PASSWORD`, `*_SECRET`, `*_KEY`) live only in the server's
 ## Operating
 
 ```bash
-ssh root@<host>
-su - tutor                         # Tutor is pip-installed in ~/venv (needed for Python plugins)
+ssh <admin-user>@<host>            # named admin from scripts/harden.sh; root SSH is disabled
+sudo -iu tutor                       # Tutor is pip-installed in ~/venv (needed for Python plugins)
 tutor local status                 # containers
 tutor local logs -f lms            # logs
 tutor local do createuser --staff --superuser <user> <email>

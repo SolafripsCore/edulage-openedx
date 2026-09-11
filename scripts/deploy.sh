@@ -9,7 +9,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p "$(tutor plugins printroot)"
 cp plugins/*.yml "$(tutor plugins printroot)/"
-tutor plugins enable indigo edulage
+pip install --quiet --upgrade ./tutor-edulage-theme
+tutor plugins enable indigo edulage edulage-theme
 rsync -a --delete --exclude __pycache__ platform-plugin-edulage/ "$HOME/platform-plugin-edulage/"
 tutor mounts add "$HOME/platform-plugin-edulage" 2>/dev/null || true
 python3 - <<'PY'
@@ -19,4 +20,7 @@ args = [f"{k}={yaml.safe_dump(v, default_flow_style=True).strip()}" for k, v in 
 subprocess.run(["tutor", "config", "save", *sum((["--set", a] for a in args), [])], check=True)
 PY
 tutor images build openedx
+# The MFE image bundles the EduLage brand + header/footer; on the 8 GB pilot droplet it is
+# normally built elsewhere (`tutor images build mfe`) and loaded with `docker load`.
+if [[ "${BUILD_MFE:-0}" == "1" ]]; then tutor images build mfe; fi
 tutor local launch -I
