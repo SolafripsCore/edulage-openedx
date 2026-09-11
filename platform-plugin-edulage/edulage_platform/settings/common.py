@@ -37,8 +37,21 @@ def plugin_settings(settings):
         settings.EDULAGE_PAYSTACK_PUBLIC_KEY = ""
     if not hasattr(settings, "EDULAGE_SITE_URL"):
         settings.EDULAGE_SITE_URL = "https://edulage.org"
+    if not hasattr(settings, "EDULAGE_STUDIO_URL"):
+        settings.EDULAGE_STUDIO_URL = f"https://{settings.CMS_BASE}" if getattr(settings, "CMS_BASE", "") else ""
+    # Identity-provider admin client for the institution console (empty → invitations disabled).
+    if not hasattr(settings, "EDULAGE_KC_URL"):
+        settings.EDULAGE_KC_URL = ""
+    if not hasattr(settings, "EDULAGE_KC_REALM"):
+        settings.EDULAGE_KC_REALM = "edulage"
+    if not hasattr(settings, "EDULAGE_KC_CLIENT_ID"):
+        settings.EDULAGE_KC_CLIENT_ID = "edulage-lms-console"
+    if not hasattr(settings, "EDULAGE_KC_CLIENT_SECRET"):
+        settings.EDULAGE_KC_CLIENT_SECRET = ""
     if not hasattr(settings, "EDULAGE_BILLING_EMAIL"):
         settings.EDULAGE_BILLING_EMAIL = "billing@edulage.org"
+    if not hasattr(settings, "EDULAGE_PARTNERS_EMAIL"):
+        settings.EDULAGE_PARTNERS_EMAIL = "admin@edulage.org"
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))

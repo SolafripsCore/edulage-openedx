@@ -30,7 +30,7 @@ GET  /edulage/api/v1/dashboard/applications/   (learner, session auth)
   The caller's applications/admissions with status, for the "Applications" panel.
 GET  /edulage/api/v1/me/   (session auth; 401 when anonymous)
   Who the caller is and which "doors" to show: learner always, ``studio``/``teach`` for institution
-  staff (from CourseAccessRole), ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
+  staff (from CourseAccessRole), ``console`` for institution administrators, ``admin`` for EduLage admins. Used by the edulage.org header/sign-in
   page and the LMS/Studio header so navigation is role-aware without anyone self-declaring a role.
 GET  /edulage/api/v1/runs/?course_id=...   (public)
   Enrolment policy (admission / open_free / open_paid) and price per run, for edulage.org CTAs.
@@ -49,9 +49,11 @@ from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from .. import identity
+from ..console import administered_institutions
 from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
 
 User = get_user_model()
@@ -356,6 +358,43 @@ class PublicRunsView(APIView):
         return Response({"runs": runs})
 
 
+class PartnerRequestThrottle(AnonRateThrottle):
+    rate = "5/hour"
+
+
+class PartnerRequestView(APIView):
+    """
+    Public, unauthenticated: an institution's request to join EduLage from the edulage.org form.
+    POST /edulage/api/v1/partner-requests/  → 202 {"status": "received"|"already_pending"}
+    Nothing is provisioned here; an EduLage administrator reviews at /edulage/admin/partners/.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+    throttle_classes = (PartnerRequestThrottle,)
+    REQUIRED = ("institution_name", "contact_name", "contact_email")
+    LIMITS = {"institution_name": 160, "short_name": 16, "country": 80, "website": 200, "contact_name": 120, "contact_email": 254, "contact_role": 120, "message": 4000}
+
+    def post(self, request):
+        from .. import partners  # pylint: disable=import-outside-toplevel
+
+        data = request.data if isinstance(request.data, dict) else {}
+        if data.get("company"):  # honeypot field, hidden on the form
+            return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
+        clean = {k: str(data.get(k) or "").strip() for k in self.LIMITS}
+        problems = [k for k in self.REQUIRED if not clean[k]] + [k for k, v in clean.items() if len(v) > self.LIMITS[k]]
+        if "@" not in clean["contact_email"] or "." not in clean["contact_email"].rpartition("@")[2]:
+            problems.append("contact_email")
+        if clean["website"] and not clean["website"].startswith(("http://", "https://")):
+            clean["website"] = "https://" + clean["website"]
+        if clean["short_name"] and not partners.CODE_RE.match(clean["short_name"].upper()):
+            problems.append("short_name")
+        if problems:
+            return Response({"error": "invalid", "fields": sorted(set(problems))}, status=status.HTTP_400_BAD_REQUEST)
+        req, created = partners.record_request(clean)
+        return Response({"status": "received" if created else "already_pending", "id": req.pk}, status=status.HTTP_202_ACCEPTED)
+
+
 STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}
 TEACH_ROLES = {"staff", "instructor", "limited_staff", "beta_testers", "data_researcher"}
 
@@ -377,12 +416,13 @@ class MeView(APIView):
         admin = bool(user.is_superuser or user.is_staff)
         studio = admin or creator or bool(roles & STUDIO_ROLES)
         teach = admin or bool(roles & TEACH_ROLES)
+        console = bool(administered_institutions(user))
         return Response({
             "username": user.username,
             "name": user.profile.name if hasattr(user, "profile") else "",
             "email": user.email,
             "institutions": institutions,
-            "doors": {"learn": True, "studio": studio, "teach": teach, "admin": admin},
+            "doors": {"learn": True, "studio": studio, "teach": teach, "console": console, "admin": admin},
             "is_staff": studio or teach or admin,
         })
 
