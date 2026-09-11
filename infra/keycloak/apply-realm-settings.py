@@ -105,6 +105,9 @@ if not any(a["name"] == "edulage_roles" for a in profile["attributes"]):
         "permissions": {"view": ["admin"], "edit": ["admin"]},
         "validations": {"length": {"max": 255}},
     })
+# Attribute order drives the register / update-profile forms: name, then e-mail (password follows).
+ORDER = ["username", "firstName", "lastName", "email"]
+profile["attributes"].sort(key=lambda a: ORDER.index(a["name"]) if a["name"] in ORDER else len(ORDER))
 call("PUT", "/users/profile", profile)
 
 realm = call("GET", "")
