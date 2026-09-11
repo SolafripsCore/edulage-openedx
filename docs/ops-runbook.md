@@ -67,8 +67,19 @@ alert policies under Monitoring → Alerts when the pilot gets real traffic.
 - Monthly: `sudo edulage-restore-check`.
 - After any Tutor/Keycloak config change: `sudo edulage-backup` (captures the new config).
 
+## Institution hosts
+
+Approving a partner request is the only step: `<code>.learn.edulage.org` serves within a minute.
+
+- DNS: one wildcard record `*.learn` → droplet IP in Vercel DNS (`edulage.org`, team `solafrips-team1`);
+  explicit `unia.learn` / `unib.learn` records are redundant but harmless.
+- TLS: Caddy issues the certificate on the first visit (on-demand TLS). Before issuing it asks
+  `GET lms:8000/edulage/api/v1/tenant-hosts/check/?domain=<host>`, which is 200 only when an eox-tenant
+  `Route` for that host exists — so random names under `*.learn` are refused and cannot burn Let's Encrypt quota.
+- Django: `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` accept `.learn.edulage.org` (`plugins/edulage.yml`,
+  `EDULAGE_TENANT_DOMAIN`); no restart per institution.
+- If the droplet IP changes, update `learn`, `*.learn`, `studio`, `auth`, `apps.learn`, `meilisearch.learn`.
+
 ## Known gaps
 
-- New institutions approved through the partner queue still need DNS (`<code>.learn.edulage.org`) and
-  Caddy/Tutor host entries added by hand.
 - Nightly sets stay on the same disk as production; off-host copy (DO Spaces, encrypted) is the next step.
