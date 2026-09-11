@@ -601,3 +601,16 @@ Findings:
 9. Compatibility matrix (§14.9) re-verified after each Tutor/Open edX upgrade.
 10. Server hardening (§14.10): host baseline, secret rotation and identity disabling done; SSH/admin
     allow-list, remaining Tutor credential rotation and backup rehearsal outstanding.
+
+### 14.13 Institution console (staff invitations)
+Staff roles are granted, never self-declared. `/edulage/institution/<ORG>/` (LMS) is open to accounts
+holding `institution_admin:<ORG>` (and to EduLage admins for every active institution); learners and
+other staff get a branded 403. Administrators invite staff by e-mail with an institution-wide role
+(`institution_admin`, `programme_admin`, `course_author`, `trainer`) or a course-run role
+(`instructor`, `teaching_assistant`, restricted to the institution's own runs). The invitee follows a
+signed link, signs in or registers with the invited address, and on acceptance the LMS (service
+account `edulage-lms-console`, `manage-users` only) writes the claim into the account's
+`edulage_roles` attribute on the IdP, adds it to `edulage-staff` (MFA) and mirrors the roles onto
+Open edX through the existing `apply_roles` path; revocation reverses both. `edulage_roles` is a
+managed, admin-only attribute in the realm user profile (`apply-realm-settings.py`); invitations
+expire after 14 days and every step is recorded in `IdentityAudit`.

@@ -8,6 +8,8 @@ same SMTP settings as the stock platform mail) and rendered from
 * ``certificate``  — a certificate became downloadable (the institution awarded the credential,
                      EduLage recorded it and it can be verified on edulage.org);
 * ``receipt``      — a Paystack payment for a paid open-enrolment run was verified.
+* ``invitation``   — an institution administrator invited someone to a staff role (plain Django
+                     mail: the invitee may not have an LMS account yet, so ACE cannot address it).
 
 Every stock Open edX e-mail (activation, password reset, course updates, instructor mail…)
 extends ``ace_common/edx_ace/common/base_body.html``; ``templates/overrides`` replaces that frame
@@ -21,7 +23,9 @@ from contextlib import contextmanager
 from datetime import timezone
 
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from django.db import IntegrityError, transaction
+from django.template.loader import render_to_string
 from django.utils.formats import date_format
 from edx_ace import ace
 from edx_ace.recipient import Recipient
@@ -261,3 +265,61 @@ def render_preview(user, kind, context):
         rendered = EmailRenderer().render(DjangoEmailChannel(), _personalized(user, kind, context))
     html = f"<!DOCTYPE html><html><head>{rendered.head_html}</head><body>{rendered.body_html}</body></html>"
     return rendered.subject.strip(), html, rendered.body
+
+
+def send_staff_invitation(invitation, institution_name, accept_url):
+    """E-mail the invitee a link to accept a staff role; True when handed to the mail backend."""
+    context = {
+        "invitation": invitation,
+        "institution_name": institution_name,
+        "accept_url": accept_url,
+        "inviter": _display_name(invitation.invited_by) if invitation.invited_by else "An administrator",
+        "site_url": SITE_URL,
+        "help_url": f"{SITE_URL}/help",
+        "brand_url": settings.EDULAGE_BRAND_URL,
+        "expires": date_format(invitation.expires, "j F Y"),
+    }
+    subject = f"You're invited to join {institution_name} on EduLage as {invitation.role_label}"
+    try:
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=render_to_string("edulage_platform/invitation_email.txt", context),
+            from_email=settings.EDULAGE_EMAIL_FROM or settings.DEFAULT_FROM_EMAIL,
+            to=[invitation.email],
+        )
+        message.attach_alternative(render_to_string("edulage_platform/invitation_email.html", context), "text/html")
+        message.send()
+    except Exception:  # pylint: disable=broad-except
+        log.exception("edulage: invitation e-mail to %s failed", invitation.email)
+        return False
+    log.info("edulage: sent invitation e-mail to %s (%s)", invitation.email, invitation.claim)
+    return True
+
+
+def send_notice(to, subject, eyebrow, heading, paragraphs, details=(), action_url="", action_label="", footnote=""):
+    """Branded transactional notice (text + HTML) to one or more addresses; True when handed to the backend."""
+    context = {
+        "eyebrow": eyebrow,
+        "heading": heading,
+        "paragraphs": paragraphs,
+        "details": list(details),
+        "action_url": action_url,
+        "action_label": action_label,
+        "footnote": footnote,
+        "site_url": SITE_URL,
+        "help_url": f"{SITE_URL}/help",
+        "brand_url": settings.EDULAGE_BRAND_URL,
+    }
+    try:
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=render_to_string("edulage_platform/notice_email.txt", context),
+            from_email=settings.EDULAGE_EMAIL_FROM or settings.DEFAULT_FROM_EMAIL,
+            to=list(to),
+        )
+        message.attach_alternative(render_to_string("edulage_platform/notice_email.html", context), "text/html")
+        message.send()
+    except Exception:  # pylint: disable=broad-except
+        log.exception("edulage: notice e-mail %r to %s failed", subject, to)
+        return False
+    return True
