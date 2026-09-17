@@ -10,13 +10,17 @@ Host and platform-name shapes are settings so each product chooses its own conve
                                      "{name} eCampus"             (ITEMS)
     CAMPUS_TENANT_MKTG_ROOT          optional "{code}"-template for the tenant's "/" and "/courses"
                                      landing (marketplace: institution profile page; control plane: portal)
+    CAMPUS_TENANT_MFE_HOST_TEMPLATE  optional "{host}"-template for a per-tenant MFE host (ITEMS:
+                                     "apps.{host}"); empty = the central MFE host serves every tenant
 
 Called by the marketplace partner queue and by the control-plane integration API
 (``POST /campus/api/v1/institutions/``, ITEMS). Idempotent.
 """
+import json
 import logging
 import re
 import secrets
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import transaction
@@ -53,6 +57,57 @@ def tenant_platform_name(code, name):
     return _format(settings.CAMPUS_TENANT_PLATFORM_NAME, code, name)
 
 
+def tenant_mfe_host(host):
+    template = settings.CAMPUS_TENANT_MFE_HOST_TEMPLATE
+    return template.format(host=host) if template else ""
+
+
+def _central_mfe_host():
+    return urlparse(settings.LEARNER_HOME_MICROFRONTEND_URL or "").netloc
+
+
+_MFE_URL_SETTINGS = (
+    "MFE_CONFIG", "FRONTEND_SITE_CONFIG", "AUTHN_MICROFRONTEND_URL", "AUTHN_MICROFRONTEND_DOMAIN",
+    "ACCOUNT_MICROFRONTEND_URL", "COURSE_AUTHORING_MICROFRONTEND_URL", "DISCUSSIONS_MICROFRONTEND_URL",
+    "WRITABLE_GRADEBOOK_URL", "LEARNER_HOME_MICROFRONTEND_URL", "INSTRUCTOR_MICROFRONTEND_URL",
+    "LEARNING_MICROFRONTEND_URL", "ORA_GRADING_MICROFRONTEND_URL", "PROFILE_MICROFRONTEND_URL",
+    "COMMUNICATIONS_MICROFRONTEND_URL", "ADMIN_CONSOLE_MICROFRONTEND_URL", "CATALOG_MICROFRONTEND_URL",
+)
+
+
+def mfe_configs(host):
+    """
+    Settings that move the tenant's micro-frontends onto ``tenant_mfe_host(host)``: every central
+    MFE/LMS URL setting is re-pointed at the tenant hosts and the session cookie is scoped to the
+    tenant subtree (``.<host>``) so the MFE host can carry the LMS session — never the shared parent.
+    """
+    mfe_host = tenant_mfe_host(host)
+    if not mfe_host:
+        return {}
+    central_mfe, central_lms = _central_mfe_host(), settings.LMS_BASE
+
+    def repoint(value):
+        text = json.dumps(value)
+        if central_mfe:
+            text = text.replace(central_mfe, mfe_host)
+        return json.loads(text.replace(central_lms, host))
+
+    configs = {
+        name: repoint(getattr(settings, name))
+        for name in _MFE_URL_SETTINGS
+        if getattr(settings, name, None) is not None
+    }
+    configs.update({
+        "SESSION_COOKIE_DOMAIN": f".{host}",
+        "SHARED_COOKIE_DOMAIN": f".{host}",
+        "CSRF_COOKIE_DOMAIN": None,
+        "CORS_ORIGIN_WHITELIST": sorted({*settings.CORS_ORIGIN_WHITELIST, f"https://{host}", f"https://{mfe_host}"}),
+        "CSRF_TRUSTED_ORIGINS": sorted({*settings.CSRF_TRUSTED_ORIGINS, f"https://{host}", f"https://{mfe_host}"}),
+        "LOGIN_REDIRECT_WHITELIST": sorted({*getattr(settings, "LOGIN_REDIRECT_WHITELIST", []), host, mfe_host}),
+    })
+    return configs
+
+
 def code_available(code):
     from organizations.models import Organization  # pylint: disable=import-outside-toplevel
 
@@ -75,6 +130,9 @@ def lms_configs(code, name, extra=None):
         # Session cookies stay on the tenant host; never the shared parent domain.
         "SESSION_COOKIE_DOMAIN": None,
     }
+    configs.update(mfe_configs(host))
+    if "MFE_CONFIG" in configs:
+        configs["MFE_CONFIG"]["SITE_NAME"] = configs["PLATFORM_NAME"]
     root_template = settings.CAMPUS_TENANT_MKTG_ROOT
     if root_template:
         landing = _format(root_template, code, name)
@@ -105,6 +163,9 @@ def provision_institution(code, name, actor=None, admin_email=None, meta=None, e
             },
         )
         Route.objects.update_or_create(domain=host, defaults={"config": tenant})
+        if tenant_mfe_host(host):
+            # The MFE host resolves to the same tenant so ``/api/mfe_config`` served on it is tenant-scoped.
+            Route.objects.update_or_create(domain=tenant_mfe_host(host), defaults={"config": tenant})
         Organization.objects.get_or_create(short_name=code, defaults={"name": code, "description": name, "active": True})
         Organization.objects.filter(short_name=code).update(description=name, active=True)
         invitation = None

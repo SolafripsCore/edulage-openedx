@@ -43,7 +43,7 @@ STOCK_PAGE_MARKER = b"openedx-release-line"
 def _pipeline_running(request):
     """True while a third-party-auth (partial) pipeline is in progress for this session."""
     session = getattr(request, "session", None)
-    return bool(session and session.get("partial_pipeline_token"))
+    return bool(session and (session.get("partial_pipeline_token") or session.get("partial_pipeline_token_")))
 
 
 def _jwt_cookie_names():

@@ -44,6 +44,8 @@ def plugin_settings(settings):
         settings.CAMPUS_TENANT_PLATFORM_NAME = "{name} on {platform_name}"
     if not hasattr(settings, "CAMPUS_TENANT_MKTG_ROOT"):
         settings.CAMPUS_TENANT_MKTG_ROOT = ""
+    if not hasattr(settings, "CAMPUS_TENANT_MFE_HOST_TEMPLATE"):
+        settings.CAMPUS_TENANT_MFE_HOST_TEMPLATE = ""
     # Product-layer hooks (dotted paths; empty = core defaults, i.e. admission required everywhere).
     if not hasattr(settings, "CAMPUS_ENROLMENT_POLICY_PROVIDER"):
         settings.CAMPUS_ENROLMENT_POLICY_PROVIDER = ""

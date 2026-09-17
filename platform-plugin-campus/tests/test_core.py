@@ -63,6 +63,32 @@ class ProvisioningTests(TestCase):
         self.assertIsNone(cfg["SESSION_COOKIE_DOMAIN"])
         self.assertNotIn("MKTG_URLS", cfg)
 
+    @override_settings(
+        CAMPUS_TENANT_HOST_TEMPLATE="ecampus.{code}.edusite.ng",
+        CAMPUS_TENANT_MFE_HOST_TEMPLATE="apps.{host}",
+        LEARNER_HOME_MICROFRONTEND_URL="https://apps.learn.example.org/learner-dashboard/",
+        LEARNING_MICROFRONTEND_URL="https://apps.learn.example.org/learning",
+        MFE_CONFIG={"BASE_URL": "apps.learn.example.org", "LMS_BASE_URL": "https://learn.example.org", "SITE_NAME": "X"},
+        CORS_ORIGIN_WHITELIST=["https://learn.example.org"],
+        CSRF_TRUSTED_ORIGINS=[],
+    )
+    def test_per_tenant_mfe_host(self):
+        cfg = provisioning.lms_configs("UNIA", "University of Abuja")
+        self.assertEqual(cfg["LEARNER_HOME_MICROFRONTEND_URL"], "https://apps.ecampus.unia.edusite.ng/learner-dashboard/")
+        self.assertEqual(cfg["LEARNING_MICROFRONTEND_URL"], "https://apps.ecampus.unia.edusite.ng/learning")
+        self.assertEqual(cfg["MFE_CONFIG"]["BASE_URL"], "apps.ecampus.unia.edusite.ng")
+        self.assertEqual(cfg["MFE_CONFIG"]["LMS_BASE_URL"], "https://ecampus.unia.edusite.ng")
+        self.assertEqual(cfg["MFE_CONFIG"]["SITE_NAME"], "University of Abuja on Example Campus")
+        self.assertEqual(cfg["SESSION_COOKIE_DOMAIN"], ".ecampus.unia.edusite.ng")
+        self.assertIn("https://apps.ecampus.unia.edusite.ng", cfg["CORS_ORIGIN_WHITELIST"])
+        self.assertIn("https://learn.example.org", cfg["CORS_ORIGIN_WHITELIST"])
+        self.assertIn("apps.ecampus.unia.edusite.ng", cfg["LOGIN_REDIRECT_WHITELIST"])
+
+    def test_mfe_host_disabled_by_default(self):
+        cfg = provisioning.lms_configs("UNIA", "University of Abuja")
+        self.assertIsNone(cfg["SESSION_COOKIE_DOMAIN"])
+        self.assertNotIn("MFE_CONFIG", cfg)
+
     @override_settings(CAMPUS_TENANT_MKTG_ROOT="https://portal.example.org/{code}")
     def test_optional_landing(self):
         cfg = provisioning.lms_configs("UNIA", "University of Abuja")
