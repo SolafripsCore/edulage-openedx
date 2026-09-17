@@ -28,6 +28,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from .auth import REGISTER_PARAM
 from .status import render_status
+from .studio import sync_once_per_session
 
 log = logging.getLogger(__name__)
 User = get_user_model()
@@ -85,6 +86,8 @@ class AccountStatusMiddleware:
         sso = self._single_sign_in(request)
         if sso is not None:
             return sso
+        if settings.SERVICE_VARIANT == "cms":
+            sync_once_per_session(request)
         response = self.get_response(request)
         self._clamp_staff_session(request)
         return self._brand_error_page(request, response)
