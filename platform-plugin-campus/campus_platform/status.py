@@ -34,7 +34,7 @@ PAGES = {
             "Verify your e-mail address in your {platform} account, then sign in again.",
             "If you already have a learning account, contact learner support so we can connect it safely.",
         ],
-        "primary": ("Contact learner support", f"{_site_url()}/help"),
+        "primary": ("Contact learner support", "{site_url}/help"),
         "secondary": ("Try signing in again", "{login_url}"),
     },
     "suspended": {
@@ -47,8 +47,8 @@ PAGES = {
             "use with {platform}."
         ),
         "steps": [],
-        "primary": ("Contact learner support", f"{_site_url()}/help"),
-        "secondary": (f"Back to {settings.PLATFORM_NAME}", _site_url()),
+        "primary": ("Contact learner support", "{site_url}/help"),
+        "secondary": ("Back to {platform}", "{site_url}"),
     },
     "pending": {
         "status": 200,
@@ -64,7 +64,7 @@ PAGES = {
             "When the institution admits you, the programme unlocks in My learning automatically.",
         ],
         "primary": ("Go to My learning", "/dashboard"),
-        "secondary": ("Browse programmes", f"{_site_url()}/programmes"),
+        "secondary": ("Browse programmes", "{site_url}/programmes"),
     },
     "sign-in-failed": {
         "status": 200,
@@ -76,7 +76,7 @@ PAGES = {
         ),
         "steps": [],
         "primary": ("Try signing in again", "{login_url}"),
-        "secondary": ("Contact learner support", f"{_site_url()}/help"),
+        "secondary": ("Contact learner support", "{site_url}/help"),
     },
     "not-found": {
         "status": 404,
@@ -88,7 +88,7 @@ PAGES = {
         ),
         "steps": [],
         "primary": ("Go to My learning", "/dashboard"),
-        "secondary": ("Browse programmes", f"{_site_url()}/programmes"),
+        "secondary": ("Browse programmes", "{site_url}/programmes"),
     },
     "error": {
         "status": 500,
@@ -100,7 +100,7 @@ PAGES = {
         ),
         "steps": [],
         "primary": ("Go to My learning", "/dashboard"),
-        "secondary": ("Contact learner support", f"{_site_url()}/help"),
+        "secondary": ("Contact learner support", "{site_url}/help"),
     },
 }
 
@@ -124,7 +124,7 @@ def _context(code, request=None):
 
     def resolve(link):
         label, href = link
-        return {"label": text(label), "href": href.replace("{login_url}", login_url)}
+        return {"label": text(label), "href": href.replace("{login_url}", login_url).replace("{site_url}", _site_url())}
 
     page = {**page, "title": text(page["title"]), "body": text(page["body"]), "steps": [text(s) for s in page["steps"]]}
     return {
