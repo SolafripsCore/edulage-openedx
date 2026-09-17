@@ -18,9 +18,19 @@ jobs:
       - name: Lint Python (plugin, theme, infra, scripts)
         run: ruff check --select E9,F63,F7,F82,F401,F811,F841 --line-length 120 .
       - name: Byte-compile Python
-        run: python -m compileall -q platform-plugin-edulage tutor-edulage-theme/tutoredulagetheme infra scripts
+        run: python -m compileall -q platform-plugin-edulage platform-plugin-campus tutor-edulage-theme/tutoredulagetheme infra scripts
       - name: Plugin package builds
-        run: pip install --quiet build && python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-edulage
+        run: |
+          pip install --quiet build
+          python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-edulage
+          python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-campus
+          python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-campus/marketplace
+      - name: platform-plugin-campus unit tests
+        working-directory: platform-plugin-campus
+        run: |
+          pip install --quiet "django<5.3" "edx-opaque-keys[django]<2.12" "openedx-events<10" celery requests
+          PYTHONPATH=.:marketplace DJANGO_SETTINGS_MODULE=tests.settings python -m django makemigrations --check --dry-run campus_platform campus_marketplace
+          PYTHONPATH=.:marketplace DJANGO_SETTINGS_MODULE=tests.settings python -m django test tests
       - name: Every model change has a migration file
         run: |
           # each migration must be referenced as a dependency or be the leaf; catches two leaves (forgotten merge)

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-plugin-campus-marketplace"
+version = "1.0.0"
+description = "Marketplace product layer for platform-plugin-campus: public catalogue, open/paid self-enrolment (Paystack), partner onboarding."
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.11"
+dependencies = ["platform-plugin-campus==1.0.0"]
+
+[project.entry-points."lms.djangoapp"]
+campus_marketplace = "campus_marketplace.apps:CampusMarketplaceConfig"
+
+[project.entry-points."cms.djangoapp"]
+campus_marketplace = "campus_marketplace.apps:CampusMarketplaceConfig"
+
+[tool.setuptools.packages.find]
+include = ["campus_marketplace*"]
+
+[tool.setuptools.package-data]
+campus_marketplace = ["templates/**/*.html", "templates/**/*.txt"]

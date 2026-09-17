@@ -1,0 +1,10 @@
+{{ inviter }} has invited you to join {{ institution_name }} on {{ platform_name }} as {{ invitation.role_label }}{% if invitation.course_id %} for the course run {{ invitation.course_id }}{% endif %}.
+
+Accept the invitation (sign in or create an {{ platform_name }} account with {{ invitation.email }}):
+{{ accept_url }}
+
+The link is valid until {{ expires }}. Staff accounts are asked to set up an authenticator app at sign-in.
+
+If you weren't expecting this, you can ignore this e-mail.
+
+{{ platform_name }} · {{ site_url }} · {{ help_url }}

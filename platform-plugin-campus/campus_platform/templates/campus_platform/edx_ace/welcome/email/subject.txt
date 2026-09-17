@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Welcome to {{ platform_name }}, {{ learner_name }}{% endblocktrans %}{% endautoescape %}

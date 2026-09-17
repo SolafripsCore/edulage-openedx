@@ -1,0 +1,25 @@
+{% load i18n %}
+{% load ace %}
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0;">
+  <tr>
+    <td align="center" bgcolor="#09184f" style="background-color:#09184f;border-radius:8px;">
+      <a
+      {% if reset_url %}
+        href="{{ reset_url }}"
+      {% elif course_cta_url %}
+        href="{% with_link_tracking course_cta_url %}"
+      {% else %}
+        {% if course_ids|length > 1 %}
+          href="{% with_link_tracking dashboard_url %}"
+        {% else %}
+          href="{% with_link_tracking course_url %}"
+        {% endif %}
+      {% endif %}
+      target="_blank"
+      style="display:inline-block;padding:13px 26px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;background-color:#09184f;">
+        <font color="#ffffff"><b>{{ course_cta_text }}</b></font>
+      </a>
+    </td>
+  </tr>
+</table>
