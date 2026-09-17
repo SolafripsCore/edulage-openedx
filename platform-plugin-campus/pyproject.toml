@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "platform-plugin-campus"
+version = "1.0.0"
+description = "Brand-neutral multi-institution campus integration for Open edX: tenancy, OIDC SSO, admission-gated enrolment, institution provisioning, control-plane API, events."
+license = {text = "AGPL-3.0-only"}
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+# Marketplace product layer (public catalogue, self-enrolment, Paystack checkout, partner onboarding).
+# A separate distribution: deployments that do not install it have no marketplace code at all.
+marketplace = ["platform-plugin-campus-marketplace==1.0.0"]
+
+[project.entry-points."lms.djangoapp"]
+campus_platform = "campus_platform.apps:CampusPlatformConfig"
+
+[project.entry-points."cms.djangoapp"]
+campus_platform = "campus_platform.apps:CampusPlatformConfig"
+
+[tool.setuptools.packages.find]
+include = ["campus_platform*"]
+
+[tool.setuptools.package-data]
+campus_platform = ["templates/**/*.html", "templates/**/*.txt", "static/**/*"]

@@ -6,3 +6,5 @@ __pycache__/
 tutor-edulage-theme/*.egg-info/
 tutor-edulage-theme/build/
 tutor-edulage-theme/*.egg-info/
+platform-plugin-campus/build/
+platform-plugin-campus/**/*.egg-info/

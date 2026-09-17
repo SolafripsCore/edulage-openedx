@@ -1,0 +1,66 @@
+  <style>
+    /* Tokens mirror {{ platform_name }}/src/app/globals.css */
+    :root {
+      --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f;
+      --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
+      --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
+      --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff;
+    }
+    @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("{{ brand_url }}/fonts/inter-latin.woff2") format("woff2"); }
+    @font-face { font-family: "Plus Jakarta Sans"; font-weight: 200 800; font-display: swap; src: url("{{ brand_url }}/fonts/plusjakartasans-latin.woff2") format("woff2"); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      display: flex; flex-direction: column; min-height: 100vh;
+      font-family: "Inter", Arial, sans-serif; color: var(--ink-900); background: var(--surface);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    .container { width: min(1280px, 100% - 48px); margin: 0 auto; }
+    @media (min-width: 768px) { .container { width: min(1280px, 100% - 64px); } }
+
+    .header { background: var(--white); border-bottom: 1px solid var(--line); }
+    .header .container { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .header img { height: 36px; width: auto; display: block; }
+    .header a.back { font-size: 0.875rem; font-weight: 600; color: var(--ink-600); text-decoration: none; }
+    .header a.back:hover { color: var(--navy-800); }
+
+    main { flex: 1; display: flex; align-items: center; padding: 64px 0; }
+    .card {
+      max-width: 640px; margin: 0 auto; background: var(--white); border: 1px solid var(--line);
+      border-radius: 1rem; padding: 40px; box-shadow: 0 18px 45px rgba(6, 16, 52, 0.09);
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 4px 10px;
+      border-radius: 999px; background: rgba(16, 165, 133, 0.1); color: var(--teal-600);
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .eyebrow.warn { background: rgba(9, 24, 79, 0.06); color: var(--navy-700); }
+    h1 {
+      margin: 0 0 16px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800;
+      font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.12; letter-spacing: -0.02em; color: var(--navy-800);
+    }
+    p { margin: 0; font-size: 1rem; line-height: 1.65; color: var(--ink-600); }
+    ol { margin: 20px 0 0; padding: 0 0 0 1.25rem; color: var(--ink-600); line-height: 1.6; }
+    ol li + li { margin-top: 8px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; padding: 11px 18px; border-radius: 0.5rem;
+      font-size: 0.9375rem; font-weight: 700; text-decoration: none; transition: background 180ms ease-out, color 180ms ease-out;
+    }
+    .btn-primary { background: var(--navy-800); color: var(--white); }
+    .btn-primary:hover { background: var(--navy-700); }
+    .btn-secondary { background: var(--white); color: var(--navy-800); border: 1px solid var(--line); }
+    .btn-secondary:hover { border-color: var(--navy-800); }
+    .receipt { margin: 20px 0 0; padding: 14px 16px; border-radius: 0.75rem; background: var(--surface); border: 1px solid var(--line); font-size: 0.875rem; line-height: 1.6; color: var(--ink-600); }
+    .receipt b { color: var(--ink-900); }
+    .receipt span + span::before { content: " · "; color: var(--ink-400); }
+    .support { margin-top: 20px; font-size: 0.875rem; color: var(--ink-400); }
+    .support a { color: var(--teal-600); font-weight: 600; text-decoration: none; }
+
+    footer { background: var(--navy-900); color: var(--ink-400); font-size: 0.8125rem; }
+    footer .container { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding: 20px 0; }
+    footer nav { display: flex; gap: 20px; }
+    footer a { color: rgba(255, 255, 255, 0.78); text-decoration: none; }
+    footer a:hover { color: var(--white); }
+  </style>
