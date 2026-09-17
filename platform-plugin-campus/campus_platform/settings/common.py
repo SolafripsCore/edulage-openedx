@@ -8,6 +8,7 @@ OIDC_BACKEND = "campus_platform.auth.CampusOpenIdConnect"
 SUSPENDED_STEP = "campus_platform.pipeline.refuse_suspended_identity"
 LINK_STEP = "campus_platform.pipeline.link_verified_account"
 IDENTITY_SYNC_STEP = "campus_platform.pipeline.sync_campus_identity"
+JIT_ACCOUNT_STEP = "campus_platform.pipeline.create_provisioned_account"
 LEGACY_ROLE_SYNC_STEP = "campus_platform.pipeline.sync_campus_roles"
 ACCOUNT_STATUS_MIDDLEWARE = "campus_platform.middleware.AccountStatusMiddleware"
 # Django templates that replace stock/theme files by path (ACE e-mail frame); searched before the theme.
@@ -67,6 +68,10 @@ def plugin_settings(settings):
     # The learner-facing OIDC client whose redirect URIs are extended per tenant host on provisioning.
     if not hasattr(settings, "CAMPUS_KC_OIDC_CLIENT_ID"):
         settings.CAMPUS_KC_OIDC_CLIENT_ID = "openedx"
+    # Create LMS accounts directly from verified IdP claims (control-plane-originated accounts) instead
+    # of via the registration form; lets a deployment keep ALLOW_PUBLIC_ACCOUNT_CREATION off.
+    if not hasattr(settings, "CAMPUS_JIT_ACCOUNTS"):
+        settings.CAMPUS_JIT_ACCOUNTS = False
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))
@@ -103,6 +108,8 @@ def plugin_settings(settings):
         pipeline.insert(pipeline.index("social_core.pipeline.social_auth.social_uid") + 1, SUSPENDED_STEP)
     if LINK_STEP not in pipeline:
         pipeline.insert(pipeline.index("social_core.pipeline.social_auth.social_user") + 1, LINK_STEP)
+    if JIT_ACCOUNT_STEP not in pipeline:
+        pipeline.insert(pipeline.index(LINK_STEP) + 1, JIT_ACCOUNT_STEP)
     if IDENTITY_SYNC_STEP not in pipeline:
         pipeline.insert(pipeline.index("social_core.pipeline.user.user_details") + 1, IDENTITY_SYNC_STEP)
     settings.SOCIAL_AUTH_PIPELINE = pipeline

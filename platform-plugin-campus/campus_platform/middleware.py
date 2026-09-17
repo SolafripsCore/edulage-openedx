@@ -40,6 +40,12 @@ ERROR_PAGES = {404: "not-found", 500: "error"}
 STOCK_PAGE_MARKER = b"openedx-release-line"
 
 
+def _pipeline_running(request):
+    """True while a third-party-auth (partial) pipeline is in progress for this session."""
+    session = getattr(request, "session", None)
+    return bool(session and session.get("partial_pipeline_token"))
+
+
 def _jwt_cookie_names():
     jwt = settings.JWT_AUTH
     return jwt.get("JWT_AUTH_COOKIE_HEADER_PAYLOAD", "edx-jwt-cookie-header-payload"), jwt.get(
@@ -121,6 +127,10 @@ class AccountStatusMiddleware:
         else:
             return None
         if request.GET.get(PASSWORD_LOGIN_PARAM) == "1" or not settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"):
+            return None
+        if _pipeline_running(request):
+            # Mid-SSO hop (e.g. first sign-in: ``ensure_user_information`` sends the new identity to
+            # ``/register`` to create the account) — let the LMS forward to the authn MFE.
             return None
         nxt = request.GET.get("next", "/dashboard")
         if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):

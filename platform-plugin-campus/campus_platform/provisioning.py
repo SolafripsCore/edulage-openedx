@@ -116,9 +116,35 @@ def provision_institution(code, name, actor=None, admin_email=None, meta=None, e
             identity.audit("invited", user=actor, email=admin_email, detail=f"{invitation.claim} by provisioning", actor="provisioning")
         events.emit("institution.provisioned", {"code": code, "name": name, "host": host}, institution=code)
         identity.audit("institution_provisioned", user=actor, email=admin_email or "", detail=f"{code}: {name} @ {host}", actor="provisioning")
+    _ensure_sso_provider(host)
     _sync_redirect_host(host, True)
     log.info("campus: provisioned institution %s (%s) on %s", code, name, host)
     return tenant, invitation
+
+
+def _ensure_sso_provider(host):
+    """
+    Third-party-auth provider configs are per Django Site and the site is resolved from the request
+    host, so a tenant host needs its own Site plus a copy of the central LMS host's ``campus``
+    provider (same client/issuer; only the site differs).
+    """
+    from django.contrib.sites.models import Site  # pylint: disable=import-outside-toplevel
+    from common.djangoapps.third_party_auth.models import OAuth2ProviderConfig  # pylint: disable=import-outside-toplevel
+
+    site, _ = Site.objects.get_or_create(domain=host, defaults={"name": host})
+    if OAuth2ProviderConfig.objects.filter(site=site, backend_name="campus").exists():
+        return
+    source = (
+        OAuth2ProviderConfig.objects.filter(site__domain=settings.LMS_BASE, backend_name="campus", enabled=True)
+        .order_by("-change_date").first()
+    )
+    if source is None:
+        log.warning("campus: no enabled campus provider on %s; SSO not configured for %s", settings.LMS_BASE, host)
+        return
+    source.pk = None
+    source.id = None
+    source.site = site
+    source.save()
 
 
 def _sync_redirect_host(host, allowed):

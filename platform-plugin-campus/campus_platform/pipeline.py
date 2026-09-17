@@ -19,11 +19,21 @@ transaction (``ATOMIC_REQUESTS``), so raising would roll the audit row back.
 to ``/campus/account/suspended/`` (a first line of defence; suspension of signed-in users is
 pushed through the status API and enforced by ``AccountStatusMiddleware``).
 
+``create_provisioned_account`` (``CAMPUS_JIT_ACCOUNTS``) runs before Open edX's
+``ensure_user_information`` and creates the LMS account straight from the IdP claims, so a deployment
+can keep ``ALLOW_PUBLIC_ACCOUNT_CREATION`` off (accounts originate from the control plane) without
+bouncing first-time learners through the authn MFE registration form.
+
 ``sync_campus_identity`` runs after the account exists: it projects the compact
 ``campus_roles`` claim onto Open edX roles (source ``token``), applies admissions that were
 recorded before the learner's first login, and shortens the session for staff.
 """
+import re
+import secrets
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.http import HttpResponseRedirect
 
 from . import emails, identity
@@ -70,6 +80,41 @@ def link_verified_account(backend, details, response=None, user=None, uid=None, 
     if not other_sub:
         identity.audit("linked", user=existing, sub=uid, email=email, detail=f"linked {existing.username} by verified e-mail")
     return {"user": existing, "is_new": False, "campus_linked": True}
+
+
+def _unique_username(seed):
+    base = re.sub(r"[^\w.+-]", "", (seed or "").split("@")[0])[:24] or "learner"
+    username, n = base, 1
+    while User.objects.filter(username__iexact=username).exists():
+        n += 1
+        username = f"{base}{n}"
+    return username
+
+
+def create_provisioned_account(backend, details, response=None, user=None, uid=None, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg
+    if backend.name != identity.CAMPUS_BACKEND or user is not None or response is None:
+        return {}
+    if not settings.CAMPUS_JIT_ACCOUNTS:
+        return {}
+    email = (details.get("email") or "").strip().lower()
+    if not email or response.get("email_verified") is not True:
+        return _refuse(backend, "cannot create account: e-mail missing or not verified by IdP", sub=uid, email=email)
+    from common.djangoapps.student.models import UserProfile
+
+    with transaction.atomic():
+        new_user = User.objects.create(
+            username=_unique_username(details.get("username") or email.split("@")[0]),
+            email=email,
+            first_name=(details.get("first_name") or "")[:150],
+            last_name=(details.get("last_name") or "")[:150],
+            is_active=True,
+        )
+        # Open edX treats an unusable password as a disabled account (``set_logged_in_cookies``),
+        # so give the SSO-only account a random one that is never disclosed.
+        new_user.set_password(secrets.token_urlsafe(32))
+        new_user.save(update_fields=["password"])
+        UserProfile.objects.create(user=new_user, name=(details.get("fullname") or new_user.username)[:255])
+    return {"user": new_user, "is_new": True}
 
 
 def sync_campus_identity(backend, user=None, response=None, uid=None, new_association=False, campus_linked=False, *args, **kwargs):  # pylint: disable=unused-argument,keyword-arg-before-vararg

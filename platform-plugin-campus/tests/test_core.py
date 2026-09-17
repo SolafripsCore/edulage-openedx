@@ -10,6 +10,8 @@ from opaque_keys.edx.keys import CourseKey
 from campus_platform import events, hooks, provisioning
 from campus_platform.models import OutboxEvent
 
+User = get_user_model()
+
 COURSE = CourseKey.from_string("course-v1:UNIA+CS101+2026")
 
 
@@ -149,3 +151,56 @@ class EventsTests(TestCase):
             self.assertEqual(events.replay([str(e.uuid)], actor=self.user), 1)
         e.refresh_from_db()
         self.assertEqual((e.status, e.attempts), (OutboxEvent.STATUS_PENDING, 0))
+
+
+class JitAccountTests(TestCase):
+    """``create_provisioned_account`` creates the LMS user from verified claims when enabled."""
+
+    def _run(self, details, response, **kwargs):
+        import sys
+        import types
+
+        profile = mock.Mock()
+        student = types.ModuleType("common.djangoapps.student.models")
+        student.UserProfile = profile
+        modules = {
+            "common": types.ModuleType("common"),
+            "common.djangoapps": types.ModuleType("common.djangoapps"),
+            "common.djangoapps.student": types.ModuleType("common.djangoapps.student"),
+            "common.djangoapps.student.models": student,
+        }
+        backend = mock.Mock(name="campus")
+        backend.name = "campus"
+        for name in ("edx_ace", "edx_ace.recipient", "social_core", "social_core.backends", "social_core.backends.open_id_connect"):
+            modules.setdefault(name, mock.MagicMock())
+        with mock.patch.dict(sys.modules, modules), mock.patch("campus_platform.identity.audit"):
+            from campus_platform import pipeline
+
+            out = pipeline.create_provisioned_account(backend, details, response=response, uid="sub-1", **kwargs)
+        return out, profile
+
+    @override_settings(CAMPUS_JIT_ACCOUNTS=True)
+    def test_creates_active_user_without_password(self):
+        out, profile = self._run(
+            {"email": "Ada@Example.org", "username": "ada lovelace", "fullname": "Ada Lovelace"},
+            {"email_verified": True},
+        )
+        user = out["user"]
+        self.assertTrue(out["is_new"])
+        self.assertEqual((user.email, user.username, user.is_active), ("ada@example.org", "adalovelace", True))
+        self.assertTrue(user.has_usable_password())
+        profile.objects.create.assert_called_once_with(user=user, name="Ada Lovelace")
+
+    @override_settings(CAMPUS_JIT_ACCOUNTS=True)
+    def test_username_collision_and_unverified_email(self):
+        User.objects.create(username="ada", email="other@example.org")
+        out, _ = self._run({"email": "ada@example.org", "username": "ada"}, {"email_verified": True})
+        self.assertEqual(out["user"].username, "ada2")
+        refused, _ = self._run({"email": "x@example.org", "username": "x"}, {"email_verified": False})
+        self.assertEqual(refused.status_code, 302)
+
+    @override_settings(CAMPUS_JIT_ACCOUNTS=False)
+    def test_disabled_is_noop(self):
+        out, _ = self._run({"email": "ada@example.org"}, {"email_verified": True})
+        self.assertEqual(out, {})
+        self.assertFalse(User.objects.filter(email="ada@example.org").exists())
