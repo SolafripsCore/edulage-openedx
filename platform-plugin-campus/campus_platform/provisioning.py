@@ -21,7 +21,7 @@ import secrets
 from django.conf import settings
 from django.db import transaction
 
-from . import events, identity
+from . import events, identity, keycloak
 from .models import StaffInvitation
 
 log = logging.getLogger(__name__)
@@ -116,8 +116,19 @@ def provision_institution(code, name, actor=None, admin_email=None, meta=None, e
             identity.audit("invited", user=actor, email=admin_email, detail=f"{invitation.claim} by provisioning", actor="provisioning")
         events.emit("institution.provisioned", {"code": code, "name": name, "host": host}, institution=code)
         identity.audit("institution_provisioned", user=actor, email=admin_email or "", detail=f"{code}: {name} @ {host}", actor="provisioning")
+    _sync_redirect_host(host, True)
     log.info("campus: provisioned institution %s (%s) on %s", code, name, host)
     return tenant, invitation
+
+
+def _sync_redirect_host(host, allowed):
+    """Best effort: the route is authoritative; a stale IdP redirect list is repaired on re-provision."""
+    if not keycloak.configured():
+        return
+    try:
+        keycloak.set_redirect_host(host, allowed)
+    except keycloak.KeycloakError as exc:
+        log.warning("campus: could not update IdP redirect URI for %s: %s", host, exc)
 
 
 def deactivate_institution(code, actor=None):
@@ -128,5 +139,7 @@ def deactivate_institution(code, actor=None):
     with transaction.atomic():
         Organization.objects.filter(short_name=code).update(active=False)
         for tenant in TenantConfig.objects.filter(external_key=code.lower()):
+            for route in Route.objects.filter(config=tenant):
+                _sync_redirect_host(route.domain, False)
             Route.objects.filter(config=tenant).delete()
         identity.audit("institution_deactivated", user=actor, detail=code, actor="provisioning")

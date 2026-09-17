@@ -99,6 +99,25 @@ def _staff_group_id():
     raise KeycloakError(f"group {STAFF_GROUP} missing on the identity provider")
 
 
+def _oidc_client():
+    clients = _call("GET", "/clients", params={"clientId": settings.CAMPUS_KC_OIDC_CLIENT_ID}) or []
+    if not clients:
+        raise KeycloakError(f"client {settings.CAMPUS_KC_OIDC_CLIENT_ID} missing on the identity provider")
+    return clients[0]
+
+
+def set_redirect_host(host, allowed=True):
+    """Add or remove ``https://<host>/*`` on the LMS OIDC client so a tenant host can complete sign-in."""
+    client = _oidc_client()
+    uri = f"https://{host}/*"
+    uris = [u for u in client.get("redirectUris") or [] if u != uri]
+    origins = [o for o in client.get("webOrigins") or [] if o != f"https://{host}"]
+    if allowed:
+        uris.append(uri)
+        origins.append(f"https://{host}")
+    _call("PUT", f"/clients/{client['id']}", body={**client, "redirectUris": uris, "webOrigins": origins})
+
+
 def set_roles(kc_user, roles):
     """Replace the account's ``campus_roles`` and align ``campus-staff`` membership (MFA)."""
     roles = sorted(set(roles)) or ["learner"]

@@ -64,6 +64,9 @@ def plugin_settings(settings):
         settings.CAMPUS_KC_CLIENT_ID = "campus-lms-console"
     if not hasattr(settings, "CAMPUS_KC_CLIENT_SECRET"):
         settings.CAMPUS_KC_CLIENT_SECRET = ""
+    # The learner-facing OIDC client whose redirect URIs are extended per tenant host on provisioning.
+    if not hasattr(settings, "CAMPUS_KC_OIDC_CLIENT_ID"):
+        settings.CAMPUS_KC_OIDC_CLIENT_ID = "openedx"
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))
