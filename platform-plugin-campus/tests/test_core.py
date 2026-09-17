@@ -151,6 +151,19 @@ class EventsTests(TestCase):
         self.assertEqual(e.status, OutboxEvent.STATUS_FAILED)
         self.assertIsNone(e.next_attempt)
 
+    def test_failure_schedules_retry_after_backoff(self):
+        (e,) = self._emit()
+        with mock.patch.object(events.requests, "post") as post, mock.patch.object(events, "schedule_delivery") as sched:
+            post.return_value = mock.Mock(status_code=503, text="down")
+            events.deliver(e)
+            sched.assert_called_once_with(countdown=events.BACKOFF_SECONDS[0])
+            events.deliver(e)
+            sched.assert_called_with(countdown=events.BACKOFF_SECONDS[1])
+            post.return_value = mock.Mock(status_code=200, text="")
+            sched.reset_mock()
+            events.deliver(e)
+            sched.assert_not_called()
+
     def test_pending_delivery_preserves_order_and_stops_on_failure(self):
         first, second, third = self._emit(3)
         with mock.patch.object(events.requests, "post") as post:

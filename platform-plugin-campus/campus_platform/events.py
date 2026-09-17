@@ -67,15 +67,19 @@ def emit(event_type, data, institution="", course_key=None, sub="", version=1, o
     return event
 
 
-def schedule_delivery():
+def schedule_delivery(countdown=0):
+    """Run delivery on the worker now, or after ``countdown`` seconds (retry of a failed event)."""
     if not configured():
         return
     try:
         from .tasks import deliver_pending  # pylint: disable=import-outside-toplevel
 
-        deliver_pending.delay()
+        deliver_pending.apply_async(countdown=countdown)
     except ImportError:  # celery not available (management/test contexts)
-        deliver_pending_now()
+        if not countdown:
+            deliver_pending_now()
+    except Exception as exc:  # broker unavailable: rows stay pending for the periodic `campus_events deliver`
+        log.warning("campus events: could not schedule delivery (%s); relying on periodic delivery", exc)
 
 
 def serialize(event):
@@ -142,6 +146,8 @@ def deliver(event):
         event.next_attempt = timezone.now() + timedelta(seconds=delay)
         event.last_error = error
     event.save(update_fields=["status", "attempts", "next_attempt", "delivered", "last_error"])
+    if not ok and event.status == OutboxEvent.STATUS_PENDING:
+        schedule_delivery(countdown=delay)
     return ok
 
 
