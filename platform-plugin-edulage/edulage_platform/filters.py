@@ -4,8 +4,9 @@ from django.conf import settings
 from django.db.models import Q
 from opaque_keys.edx.django.models import CourseKeyField
 from openedx_filters import PipelineStep
-from openedx_filters.learning.filters import CourseEnrollmentStarted
+from openedx_filters.learning.filters import CourseEnrollmentStarted, StudentRegistrationRequested
 
+from . import botguard
 from .certificates import certificate_context, certificate_template
 from .models import Admission, CourseListing, Payment
 from .status import page_url
@@ -71,3 +72,31 @@ class EdulageCertificate(PipelineStep):
         if custom_template:
             return {"context": context, "custom_template": custom_template}
         return {"context": context, "custom_template": certificate_template()}
+
+
+class GuardRegistration(PipelineStep):
+    """
+    Bot protection for LMS account creation (``RegistrationView``), which e-mails an activation link to
+    the submitted address: refuses registrations that are not part of the EduLage SSO flow (when
+    ``EDULAGE_REQUIRE_SSO_REGISTRATION``), random/link-bearing names, and rate-limits the rest.
+    """
+
+    def run_filter(self, form_data):  # pylint: disable=arguments-differ
+        from crum import get_current_request  # pylint: disable=import-outside-toplevel
+
+        request = get_current_request()
+        sso_running = False
+        if request is not None and settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"):
+            from common.djangoapps.third_party_auth import pipeline  # pylint: disable=import-outside-toplevel
+
+            sso_running = pipeline.running(request)
+        require_sso = settings.EDULAGE_REQUIRE_SSO_REGISTRATION and settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH")
+        refusal = botguard.registration_refusal(
+            form_data.get("name", ""), form_data.get("email", ""),
+            botguard.client_ip(request) if request is not None else "", sso_running, bool(require_sso),
+        )
+        if refusal:
+            code, message = refusal
+            log.info("edulage: registration refused (%s) for %s", code, form_data.get("email", ""))
+            raise StudentRegistrationRequested.PreventRegistration(message, status_code=code)
+        return {"form_data": form_data}
