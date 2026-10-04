@@ -370,34 +370,30 @@ class PartnerRequestThrottle(AnonRateThrottle):
 class PartnerRequestView(APIView):
     """
     Public, unauthenticated: an institution's request to join EduLage from the edulage.org form.
+    GET  /edulage/api/v1/partner-requests/  → 200 {"form_token": "..."} (signed render time, see botguard)
     POST /edulage/api/v1/partner-requests/  → 202 {"status": "received"|"already_pending"}
-    Nothing is provisioned here; an EduLage administrator reviews at /edulage/admin/partners/.
+    Screened by ``intake.partner_request`` (honeypot, form token, name checks, rate limits) before
+    anything is stored or e-mailed. Nothing is provisioned here; an EduLage administrator reviews at
+    /edulage/admin/partners/.
     """
 
     authentication_classes = ()
     permission_classes = ()
     throttle_classes = (PartnerRequestThrottle,)
-    REQUIRED = ("institution_name", "contact_name", "contact_email")
-    LIMITS = {"institution_name": 160, "short_name": 16, "country": 80, "website": 200, "contact_name": 120, "contact_email": 254, "contact_role": 120, "message": 4000}
+
+    def get_throttles(self):
+        return super().get_throttles() if self.request.method == "POST" else []
+
+    def get(self, request):
+        from .. import botguard  # pylint: disable=import-outside-toplevel
+
+        return Response({"form_token": botguard.issue_form_token()}, headers={"Cache-Control": "no-store"})
 
     def post(self, request):
-        from .. import partners  # pylint: disable=import-outside-toplevel
+        from .. import botguard, intake, partners  # pylint: disable=import-outside-toplevel
 
-        data = request.data if isinstance(request.data, dict) else {}
-        if data.get("company"):  # honeypot field, hidden on the form
-            return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
-        clean = {k: str(data.get(k) or "").strip() for k in self.LIMITS}
-        problems = [k for k in self.REQUIRED if not clean[k]] + [k for k, v in clean.items() if len(v) > self.LIMITS[k]]
-        if "@" not in clean["contact_email"] or "." not in clean["contact_email"].rpartition("@")[2]:
-            problems.append("contact_email")
-        if clean["website"] and not clean["website"].startswith(("http://", "https://")):
-            clean["website"] = "https://" + clean["website"]
-        if clean["short_name"] and not partners.CODE_RE.match(clean["short_name"].upper()):
-            problems.append("short_name")
-        if problems:
-            return Response({"error": "invalid", "fields": sorted(set(problems))}, status=status.HTTP_400_BAD_REQUEST)
-        req, created = partners.record_request(clean)
-        return Response({"status": "received" if created else "already_pending", "id": req.pk}, status=status.HTTP_202_ACCEPTED)
+        code, body = intake.partner_request(request.data, botguard.client_ip(request), partners.record_request)
+        return Response(body, status=code)
 
 
 STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}

@@ -4,6 +4,8 @@ ENROLLMENT_FILTER = "org.openedx.learning.course.enrollment.started.v1"
 ADMISSION_STEP = "edulage_platform.filters.RequireAdmission"
 CERTIFICATE_FILTER = "org.openedx.learning.certificate.render.started.v1"
 CERTIFICATE_STEP = "edulage_platform.filters.EdulageCertificate"
+REGISTRATION_FILTER = "org.openedx.learning.student.registration.requested.v1"
+REGISTRATION_STEP = "edulage_platform.filters.GuardRegistration"
 OIDC_BACKEND = "edulage_platform.auth.EdulageOpenIdConnect"
 SUSPENDED_STEP = "edulage_platform.pipeline.refuse_suspended_identity"
 LINK_STEP = "edulage_platform.pipeline.link_verified_account"
@@ -50,6 +52,10 @@ def plugin_settings(settings):
         settings.EDULAGE_KC_CLIENT_SECRET = ""
     if not hasattr(settings, "EDULAGE_BILLING_EMAIL"):
         settings.EDULAGE_BILLING_EMAIL = "billing@edulage.org"
+    # LMS accounts are created through the EduLage IdP (which verifies the e-mail); direct registration
+    # API calls are refused (edulage_platform.filters.GuardRegistration).
+    if not hasattr(settings, "EDULAGE_REQUIRE_SSO_REGISTRATION"):
+        settings.EDULAGE_REQUIRE_SSO_REGISTRATION = True
     if not hasattr(settings, "EDULAGE_PARTNERS_EMAIL"):
         settings.EDULAGE_PARTNERS_EMAIL = "admin@edulage.org"
     for engine in settings.TEMPLATES:
@@ -75,6 +81,11 @@ def plugin_settings(settings):
     )
     if CERTIFICATE_STEP not in cert_entry["pipeline"]:
         cert_entry["pipeline"].append(CERTIFICATE_STEP)
+    registration_entry = settings.OPEN_EDX_FILTERS_CONFIG.setdefault(
+        REGISTRATION_FILTER, {"fail_silently": False, "pipeline": []}
+    )
+    if REGISTRATION_STEP not in registration_entry["pipeline"]:
+        registration_entry["pipeline"].append(REGISTRATION_STEP)
 
     # Studio authenticates against the LMS via OAuth2; the IdP backend lives in the LMS only.
     if settings.SERVICE_VARIANT != "lms" or not settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"):

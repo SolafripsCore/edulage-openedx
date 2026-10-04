@@ -77,6 +77,8 @@ def record_request(data):
         ("Institution", req.institution_name), ("Country", req.country), ("Website", req.website),
         ("Contact", f"{req.contact_name} <{req.contact_email}>"), ("Role", req.contact_role),
     ]
+    # The submitter's address is unverified: the confirmation never echoes the free-form website/message.
+    submitter_details = [row for row in details if row[0] != "Website"]
     emails.send_notice(
         [req.contact_email],
         "We received your request to bring your institution onto EduLage",
@@ -86,7 +88,7 @@ def record_request(data):
             "Once approved, you will receive an invitation to become the institution's first administrator, "
             "from where you can invite your team and start publishing courses.",
         ],
-        details,
+        submitter_details,
         footnote="If you did not submit this request, you can ignore this e-mail.",
     )
     if settings.EDULAGE_PARTNERS_EMAIL:

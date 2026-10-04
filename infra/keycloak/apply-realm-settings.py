@@ -21,6 +21,11 @@ import urllib.request
 
 BASE = os.environ["KC_URL"].rstrip("/")
 REALM = os.environ.get("KC_REALM", "edulage")
+NAME_PATTERN = (
+    r"^(?!.*(?:(?i:https?:|www\.)|@|[0-9]))"
+    r"(?!.*[A-Za-z]{2,}\.[A-Za-z]{2,})"
+    r"(?!.*[^\s]*[a-z][A-Z][^\s]*[a-z][A-Z][^\s]*[a-z][A-Z]).*$"
+)
 
 SETTINGS = {
     "displayName": "EduLage",
@@ -96,6 +101,13 @@ for attr in profile["attributes"]:
     if attr["name"] in ("firstName", "lastName", "email"):
         attr["required"] = {"roles": ["user"]}
         attr["permissions"] = {"view": ["admin", "user"], "edit": ["admin", "user"]}
+    # Bot protection: names appear in EduLage e-mails, so links, @, digits and random strings are refused.
+    # Keep NAME_PATTERN identical to edulage_platform.botguard.KEYCLOAK_NAME_PATTERN (checked by the plugin tests).
+    if attr["name"] in ("firstName", "lastName"):
+        attr.setdefault("validations", {})
+        attr["validations"]["length"] = {"max": 100}
+        attr["validations"]["person-name-prohibited-characters"] = {}
+        attr["validations"]["pattern"] = {"pattern": NAME_PATTERN, "error-message": "elInvalidPersonName"}
 # edulage_roles is written only by administrators / the LMS console service account, never by the user.
 if not any(a["name"] == "edulage_roles" for a in profile["attributes"]):
     profile["attributes"].append({

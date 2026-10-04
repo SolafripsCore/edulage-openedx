@@ -19,6 +19,10 @@ jobs:
         run: ruff check --select E9,F63,F7,F82,F401,F811,F841 --line-length 120 .
       - name: Byte-compile Python
         run: python -m compileall -q platform-plugin-edulage tutor-edulage-theme/tutoredulagetheme infra scripts
+      - name: Plugin bot-protection unit tests
+        run: |
+          pip install --quiet "django>=4.2,<5"
+          python -m unittest discover -s platform-plugin-edulage/tests -t platform-plugin-edulage -v
       - name: Plugin package builds
         run: pip install --quiet build && python -m build --sdist --wheel --outdir /tmp/dist platform-plugin-edulage
       - name: Every model change has a migration file
