@@ -43,6 +43,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.urls import reverse
 from edx_rest_framework_extensions.auth.jwt.authentication import JwtAuthentication
 from edx_rest_framework_extensions.auth.session.authentication import SessionAuthenticationAllowInactiveUser
 from opaque_keys import InvalidKeyError
@@ -56,7 +57,7 @@ from rest_framework.views import APIView
 
 from .. import identity
 from ..console import administered_institutions
-from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
+from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, Payment, SupportScope
 
 log = logging.getLogger(__name__)
 
@@ -539,6 +540,80 @@ class DashboardCoursesView(APIView):
         listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
         orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
         return Response({"courses": [_serialize_listing(k, listings.get(k), orgs.get(k.org)) for k in keys]})
+
+
+def _course_titles(keys):
+    from openedx.core.djangoapps.content.course_overviews.models import CourseOverview  # pylint: disable=import-outside-toplevel
+
+    return {o.id: o.display_name for o in CourseOverview.objects.filter(id__in=keys)}
+
+
+class DashboardPaymentsView(APIView):
+    """The caller's own Paystack payments (receipts) with catalogue metadata, for the My learning panel."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        payments = list(Payment.objects.filter(user=request.user).exclude(status=Payment.STATUS_INITIALIZED)[:50])
+        keys = [p.course_key for p in payments]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        items = []
+        titles = _course_titles(keys)
+        for pay in payments:
+            item = _serialize_listing(pay.course_key, listings.get(pay.course_key), orgs.get(pay.course_key.org))
+            item.update(
+                title=titles.get(pay.course_key, ""),
+                reference=pay.reference,
+                amount=str(pay.amount),
+                currency=pay.currency,
+                status=pay.status,
+                status_label=pay.get_status_display(),
+                channel=pay.channel,
+                paid_at=pay.paid_at.isoformat() if pay.paid_at else None,
+                created=pay.created.isoformat(),
+                receipt_url=request.build_absolute_uri(reverse("edulage:pay-receipt", args=[pay.reference]))
+                if pay.status == Payment.STATUS_SUCCESS else None,
+            )
+            items.append(item)
+        return Response({"payments": items})
+
+
+class DashboardCertificatesView(APIView):
+    """The caller's own downloadable certificates with verification links, for the My learning panel."""
+
+    authentication_classes = (JwtAuthentication, SessionAuthentication)
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        from lms.djangoapps.certificates.models import GeneratedCertificate  # pylint: disable=import-outside-toplevel
+        from organizations.models import Organization  # pylint: disable=import-outside-toplevel
+
+        certs = list(
+            GeneratedCertificate.objects.filter(user=request.user, status="downloadable")
+            .exclude(verify_uuid="").order_by("-modified_date")
+        )
+        keys = [c.course_id for c in certs]
+        listings = {l.course_key: l for l in CourseListing.objects.filter(course_key__in=keys)}
+        orgs = {o.short_name: o for o in Organization.objects.filter(short_name__in={k.org for k in keys})}
+        verify_base = getattr(settings, "EDULAGE_SITE_URL", "https://edulage.org").rstrip("/")
+        items = []
+        titles = _course_titles(keys)
+        for cert in certs:
+            item = _serialize_listing(cert.course_id, listings.get(cert.course_id), orgs.get(cert.course_id.org))
+            item.update(
+                title=titles.get(cert.course_id, ""),
+                credential_id=cert.verify_uuid,
+                mode=cert.mode,
+                issued=cert.modified_date.isoformat(),
+                certificate_url=request.build_absolute_uri(f"/certificates/{cert.verify_uuid}"),
+                verify_url=f"{verify_base}/verify/{cert.verify_uuid}",
+            )
+            items.append(item)
+        return Response({"certificates": items})
 
 
 class TenantHostCheckView(APIView):

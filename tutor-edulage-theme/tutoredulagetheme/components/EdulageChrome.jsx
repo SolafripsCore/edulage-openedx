@@ -534,6 +534,136 @@ const EdulageApplicationsPanel = () => {
   );
 };
 
+/** Generic fetch of one dashboard collection from the platform plugin; null while loading, [] on error. */
+const useElDashboard = (path, key) => {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/${path}/`)
+      .then((r) => { if (alive) { setItems(r.data[key] || []); } })
+      .catch(() => { if (alive) { setItems([]); } });
+    return () => { alive = false; };
+  }, [path, key]);
+  return items;
+};
+
+const elMoney = (amount, currency) => {
+  const n = Number(amount);
+  if (Number.isNaN(n)) { return `${currency} ${amount}`; }
+  try {
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+  } catch (e) {
+    return `${currency} ${n.toFixed(2)}`;
+  }
+};
+
+const EL_PAY_TONE = { success: 'ok', failed: 'bad', abandoned: 'muted' };
+
+/** Learner dashboard — "Payments & receipts" panel: the learner's own course fee payments. */
+const EdulagePaymentsPanel = () => {
+  const c = elConfig();
+  const payments = useElDashboard('payments', 'payments');
+  if (!payments) { return null; }
+  return (
+    <section className="el-apps el-pay" aria-labelledby="el-pay-title">
+      <p className="el-eyebrow">Payments</p>
+      <h2 id="el-pay-title" className="el-apps__title">Payments &amp; receipts</h2>
+      {payments.length === 0 ? (
+        <p className="el-apps__empty">
+          No payments yet. Fees for paid short courses are settled securely through Paystack when you
+          enrol; every successful payment appears here with a printable receipt.
+          {' '}<a href={`${c.site}/refunds`}>Refund policy</a>
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {payments.map((p) => (
+            <li key={p.reference} className="el-apps__item">
+              <div>
+                <p className="el-apps__programme">{p.title || p.programme_title || p.course_id}</p>
+                <p className="el-apps__meta">
+                  {p.institution_name} · {elMoney(p.amount, p.currency)} · {elFormatDate(p.paid_at || p.created)}
+                </p>
+                {p.receipt_url && <a className="el-apps__action" href={p.receipt_url}>View receipt <span aria-hidden="true">→</span></a>}
+              </div>
+              <span className={`el-apps__status el-apps__status--${EL_PAY_TONE[p.status] || 'open'}`}>{p.status_label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+/** Learner dashboard — "Certificates" panel: issued credentials with view/verify links. */
+const EdulageCertificatesPanel = () => {
+  const c = elConfig();
+  const certs = useElDashboard('certificates', 'certificates');
+  if (!certs) { return null; }
+  return (
+    <section className="el-apps el-certs" aria-labelledby="el-certs-title">
+      <p className="el-eyebrow">Credentials</p>
+      <h2 id="el-certs-title" className="el-apps__title">Certificates</h2>
+      {certs.length === 0 ? (
+        <p className="el-apps__empty">
+          Certificates you earn are issued by the awarding institution and listed here with a public
+          verification link. <a href={`${c.site}/verify`}>How verification works</a>
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {certs.map((k) => (
+            <li key={k.credential_id} className="el-apps__item el-apps__item--stack">
+              <div>
+                <p className="el-apps__programme">{k.title || k.programme_title || k.course_id}</p>
+                <p className="el-apps__meta">
+                  {k.institution_name}{k.credential ? ` · ${k.credential}` : ''} · Issued {elFormatDate(k.issued)}
+                </p>
+                <p className="el-apps__meta el-apps__meta--id">ID {k.credential_id}</p>
+                <div className="el-apps__actions">
+                  <a className="el-apps__action" href={k.certificate_url}>View certificate <span aria-hidden="true">→</span></a>
+                  <a className="el-apps__action" href={k.verify_url}>Verify <span aria-hidden="true">→</span></a>
+                </div>
+              </div>
+              <span className="el-apps__status el-apps__status--ok">Issued</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+/** Learner dashboard — "Your account" panel: profile, settings, sign-out. */
+const EdulageAccountPanel = () => {
+  const c = elConfig();
+  const user = getAuthenticatedUser();
+  if (!user) { return null; }
+  const items = [
+    ['Account settings', c.account, 'Name, e-mail, password and sign-in security.'],
+    ['Public profile', `${c.profile}/u/${user.username}`, 'What other learners and institutions can see about you.'],
+    ['Sign out', c.logout, null],
+  ];
+  return (
+    <section className="el-apps el-account" aria-labelledby="el-account-title">
+      <p className="el-eyebrow">Account</p>
+      <h2 id="el-account-title" className="el-apps__title">{user.name || user.username}</h2>
+      <p className="el-apps__meta">{user.email}</p>
+      <ul className="el-apps__list">
+        {items.map(([label, href, text]) => (
+          <li key={label} className="el-apps__item">
+            <div>
+              <a className="el-apps__action" href={href}>{label} <span aria-hidden="true">→</span></a>
+              {text && <p className="el-apps__meta">{text}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 /** Learner dashboard — right-hand sidebar (widget_sidebar slot). */
 const EdulageDashboardSidebar = () => {
   const c = elConfig();
@@ -546,6 +676,9 @@ const EdulageDashboardSidebar = () => {
   return (
     <>
     <EdulageApplicationsPanel />
+    <EdulagePaymentsPanel />
+    <EdulageCertificatesPanel />
+    <EdulageAccountPanel />
     <aside className="el-side" aria-label="EduLage services">
       <p className="el-eyebrow">EduLage</p>
       <ul className="el-side__list">

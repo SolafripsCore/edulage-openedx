@@ -3,7 +3,7 @@ from django.urls import include, path, re_path
 from .admissions import apply_view, decide_view, upload_view
 from .console import console_view, invite_accept_view, invite_view, revoke_invitation_view, revoke_member_view
 from .partners import admin_view, approve_view, decline_view
-from .payments import callback_view, enrol_view, pay_view, webhook_view
+from .payments import callback_view, enrol_view, pay_view, webhook_view, receipt_view
 from .status import register_view, status_view
 
 COURSE_ID = r"(?P<course_id>course-v1:[^/+]+\+[^/+]+\+[^/]+)"
@@ -13,6 +13,7 @@ urlpatterns = [
     path("account/<slug:code>/", status_view, name="status"),
     path("register/", register_view, name="register"),
     path("pay/callback/", callback_view, name="pay-callback"),
+    path("pay/receipt/<str:reference>/", receipt_view, name="pay-receipt"),
     path("pay/webhook/", webhook_view, name="pay-webhook"),
     re_path(rf"^pay/{COURSE_ID}/$", pay_view, name="pay"),
     re_path(rf"^enrol/{COURSE_ID}/$", enrol_view, name="enrol"),

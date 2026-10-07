@@ -178,6 +178,24 @@ def pay_view(request, course_id):
 
 @never_cache
 @login_required
+def receipt_view(request, reference):
+    """``/edulage/pay/receipt/<reference>/`` — printable receipt for one of the caller's successful payments."""
+    try:
+        payment = Payment.objects.get(reference=reference, user=request.user, status=Payment.STATUS_SUCCESS)
+    except Payment.DoesNotExist as exc:
+        raise Http404 from exc
+    context = emails.receipt_context(payment)
+    context.update(
+        brand_url=getattr(settings, "EDULAGE_BRAND_URL", "/brand"),
+        platform_name=settings.PLATFORM_NAME,
+        site_url=getattr(settings, "EDULAGE_SITE_URL", "https://edulage.org").rstrip("/"),
+        dashboard_url="/dashboard",
+    )
+    return render(request, "edulage_platform/receipt.html", context)
+
+
+@never_cache
+@login_required
 def callback_view(request):
     reference = request.GET.get("reference") or request.GET.get("trxref") or ""
     payment = Payment.objects.filter(reference=reference).first()
