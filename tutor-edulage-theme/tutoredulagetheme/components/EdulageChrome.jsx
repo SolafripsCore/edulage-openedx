@@ -11,58 +11,55 @@ const EL_MAIN_LINKS = [
 ];
 
 const EL_CATALOGUE_LINKS = [
-  ['Open Education Centers', '/open-education-centers'],
   ['For institutions', '/for-institutions'],
   ['About', '/about'],
 ];
 
 const EL_UTILITY_LINKS = [
-  ['GOE Initiative', '/goe'],
-  ['Global Network', '/institutions'],
+  ['GOE Centers', '/open-education-centers'],
+  ['Quality & trust', '/quality-and-trust'],
   ['Help & Support', '/help'],
   ['Verify a credential', '/verify'],
 ];
 
 const EL_STUDY_TYPE_LINKS = [
   ["Bachelor's degrees", '/programmes?level=Undergraduate'],
-  ["Master's degrees", '/programmes?level=Postgraduate'],
+  ['Postgraduate study', '/programmes?level=Postgraduate'],
   ['Doctoral / PhD', '/programmes?level=Doctoral'],
   ['Professional diplomas & certificates', '/programmes?level=Professional'],
+  ['Short courses', '/programmes?level=Short+courses'],
   ['Fully online', '/programmes?mode=Fully+online'],
-  ['Online + OEC exams', '/programmes?mode=Online+%2B+OEC+exams'],
+  ['Online + GOE Center exams', '/programmes?mode=Online+%2B+OEC+exams'],
 ];
 
 const EL_FOOTER_COLUMNS = [
-  ['Explore', [
-    ['Browse programmes', '/programmes'],
-    ['Featured institutions', '/institutions'],
+  ['Discover', [
+    ['Programmes & courses', '/programmes'],
+    ['Institutions', '/institutions'],
     ['Study options', '/study-types'],
-    ['Find an OEC', '/open-education-centers'],
+    ['GOE Centers', '/open-education-centers'],
   ]],
-  ['Institutions', [
-    ['Why EduLage', '/for-institutions'],
-    ['Readiness requirements', '/for-institutions'],
-    ['Apply to join', '/for-institutions'],
-    ['Course production', '/for-institutions'],
-  ]],
-  ['Access & support', [
-    ['Open Education Centers', '/open-education-centers'],
-    ['OEC standards', '/open-education-centers'],
-    ['Learner support', '/help'],
+  ['For learners', [
+    ['My learning', 'dashboard'],
+    ['Help & support', '/help'],
     ['Verify a credential', '/verify'],
+    ['Quality & trust', '/quality-and-trust'],
   ]],
-  ['Global network', [
+  ['Work with us', [
+    ['For institutions', '/for-institutions'],
+    ['Become a center partner', '/open-education-centers#operate'],
     ['GOE Initiative', '/goe'],
-    ['Countries', '/institutions'],
-    ['Governments & partners', '/goe'],
-    ['Institutional network', '/institutions'],
+    ['Contact us', '/contact'],
   ]],
-  ['About EduLage', [
-    ['Our model', '/about'],
-    ['Quality and trust', '/quality-and-trust'],
-    ['Governance', '/about'],
-    ['Contact', '/contact'],
-  ]],
+];
+
+const EL_LEGAL_LINKS = [
+  ['Privacy', '/privacy'],
+  ['Terms', '/terms'],
+  ['Refunds', '/refunds'],
+  ['Cookies', '/cookies'],
+  ['Accessibility', '/accessibility'],
+  ['Data protection', '/data-protection'],
 ];
 
 const elConfig = () => {
@@ -406,54 +403,40 @@ const EdulageLearningHeader = ({ courseOrg, courseNumber, courseTitle }) => {
 const ElFooterLegal = ({ c }) => (
   <div className="el-footer__legal">
     <p>© {new Date().getFullYear()} {c.copyright}. All rights reserved.</p>
-    <div>
-      <a href={`${c.site}/privacy`}>Privacy</a>
-      <a href={`${c.site}/terms`}>Terms</a>
-      <a href={`${c.site}/accessibility`}>Accessibility</a>
-      <a href={`${c.site}/data-protection`}>Data protection</a>
-      <a href={`${c.site}/contact`}>Contact</a>
-      <span aria-label="Current site language">English (default)</span>
-    </div>
+    <nav aria-label="Legal and accessibility">
+      {EL_LEGAL_LINKS.map(([label, href]) => <a key={label} href={`${c.site}${href}`}>{label}</a>)}
+    </nav>
+    <span lang="en">English</span>
   </div>
 );
 
+/** Port of EduLage/src/components/Footer.tsx (light footer, brand column + three link columns). */
 const EdulageFooter = () => {
   const c = elConfig();
   return (
     <footer className="el-footer" role="contentinfo">
       <div className="el-container">
-        <div className="el-footer__main">
-          <div className="el-footer__lead">
-            <div>
-              <img src={c.logoWhite} alt="EduLage" width="150" height="54" className="el-footer__logo" />
-              <p className="el-footer__statement">
-                {c.tagline}—connecting learners to quality open and online education from reputable
-                tertiary institutions worldwide.
-              </p>
-            </div>
-            <div className="el-footer__help">
-              <p className="el-footer__help-title">Need help finding the right pathway?</p>
-              <p className="el-footer__help-text">
-                Explore programmes, participating institutions and supported access options.
-              </p>
-              <div className="el-footer__help-actions">
-                <a href={`${c.site}/programmes`} className="el-footer__help-primary">Explore programmes</a>
-                <a href={`${c.site}/help`} className="el-footer__help-secondary">Help & support</a>
-              </div>
-            </div>
+        <div className="el-footer__grid">
+          <div className="el-footer__brand">
+            <a href={c.site} aria-label="EduLage home">
+              <img src={c.logo} alt="EduLage" width="150" height="54" className="el-footer__logo" />
+            </a>
+            <p className="el-footer__tagline">{c.tagline}</p>
+            <p>Connecting ambition with education, institutions and opportunity.</p>
+            <a href={`${c.site}/about`} className="el-footer__about">About EduLage</a>
           </div>
-          <div className="el-footer__columns">
-            {EL_FOOTER_COLUMNS.map(([title, items]) => (
-              <div key={title}>
-                <h3>{title}</h3>
-                <ul>
-                  {items.map(([label, href]) => (
-                    <li key={label}><a href={`${c.site}${href}`}>{label}</a></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {EL_FOOTER_COLUMNS.map(([title, items]) => (
+            <div key={title}>
+              <h2>{title}</h2>
+              <ul>
+                {items.map(([label, href]) => (
+                  <li key={label}>
+                    <a href={href === 'dashboard' ? c.dashboard : `${c.site}${href}`}>{label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <ElFooterLegal c={c} />
       </div>
@@ -556,7 +539,7 @@ const EdulageDashboardSidebar = () => {
   const c = elConfig();
   const items = [
     ['Explore more programmes', `${c.site}/programmes`, 'Degrees, professional programmes and short courses from participating institutions.'],
-    ['Find an Open Education Center', `${c.site}/open-education-centers`, 'Local study support, supervised examinations and internet access.'],
+    ['Find a GOE Center', `${c.site}/open-education-centers`, 'Local study support, supervised examinations and internet access.'],
     ['Verify a credential', `${c.site}/verify`, 'Credentials are issued by institutions and recorded and verified by EduLage.'],
     ['Learner support', c.support, 'Help with access, enrolment and your learning schedule.'],
   ];

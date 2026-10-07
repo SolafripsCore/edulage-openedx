@@ -450,3 +450,17 @@
     }
   }
 }
+
+// Expressive design: ivory page canvas and serif display heading, as on edulage.org inner pages.
+.learner-dashboard,
+#learner-dashboard-container {
+  background: t.$ivory;
+}
+
+.course-list-heading-container h2.course-list-title,
+.el-empty__title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  color: t.$ink-900;
+}

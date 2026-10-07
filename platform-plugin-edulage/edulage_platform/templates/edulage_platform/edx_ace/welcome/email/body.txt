@@ -1,7 +1,7 @@
 {% load i18n %}{% autoescape off %}
 {% blocktrans %}Welcome to EduLage, {{ learner_name }}.{% endblocktrans %}
 
-{% blocktrans trimmed %}Your learning account is ready. One EduLage account gives you a single place for every programme you are admitted to — across universities, colleges, trainers and Open Education Centres in the village.{% endblocktrans %}
+{% blocktrans trimmed %}Your learning account is ready. One EduLage account gives you a single place for every programme you are admitted to — across universities, colleges, trainers and Global Open Education Centers (GOE Centers) in the village.{% endblocktrans %}
 
 {% trans "Here is how it works:" %}
 1. {% trans "Discover" %} — {% blocktrans %}browse programmes and institutions: {{ programmes_url }}{% endblocktrans %}
