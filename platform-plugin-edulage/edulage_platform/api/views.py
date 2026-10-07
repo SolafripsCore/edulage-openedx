@@ -38,6 +38,8 @@ GET  /edulage/api/v1/runs/?course_id=...   (public)
 POST/PUT are idempotent: repeating a call converges on the same state, so EduLage may retry on
 timeouts without side effects.
 """
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -55,6 +57,8 @@ from rest_framework.views import APIView
 from .. import identity
 from ..console import administered_institutions
 from ..models import Admission, CourseListing, IdentityAudit, ManagedRole, SupportScope
+
+log = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -394,6 +398,73 @@ class PartnerRequestView(APIView):
 
         code, body = intake.partner_request(request.data, botguard.client_ip(request), partners.record_request)
         return Response(body, status=code)
+
+
+class ContactMessageThrottle(AnonRateThrottle):
+    rate = "5/hour"
+
+
+class ContactMessageView(APIView):
+    """
+    Public, unauthenticated: a message from the edulage.org contact form.
+    POST /edulage/api/v1/contact/  → 202 {"status": "received"}
+    Routed by topic to the support, institutions, partners or billing mailbox; the sender gets a
+    branded acknowledgement. No record is kept beyond the audit trail and the sent e-mails.
+    """
+
+    authentication_classes = ()
+    permission_classes = ()
+    throttle_classes = (ContactMessageThrottle,)
+    REQUIRED = ("name", "email", "topic", "message")
+    LIMITS = {"name": 120, "email": 254, "topic": 32, "organisation": 160, "subject": 160, "message": 4000}
+    TOPICS = {
+        "learner": ("Learner support", "EDULAGE_SUPPORT_EMAIL"),
+        "institution": ("Institutional participation", "EDULAGE_PARTNERS_EMAIL"),
+        "partner": ("Governments and partners", "EDULAGE_PARTNERS_EMAIL"),
+        "center": ("GOE Center operators", "EDULAGE_PARTNERS_EMAIL"),
+        "payments": ("Payments and receipts", "EDULAGE_BILLING_EMAIL"),
+        "privacy": ("Privacy and data protection", "EDULAGE_SUPPORT_EMAIL"),
+        "general": ("General enquiry", "EDULAGE_SUPPORT_EMAIL"),
+    }
+
+    def post(self, request):
+        from .. import emails  # pylint: disable=import-outside-toplevel
+
+        data = request.data if isinstance(request.data, dict) else {}
+        if data.get("company"):  # honeypot field, hidden on the form
+            return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
+        clean = {k: str(data.get(k) or "").strip() for k in self.LIMITS}
+        problems = [k for k in self.REQUIRED if not clean[k]] + [k for k, v in clean.items() if len(v) > self.LIMITS[k]]
+        if "@" not in clean["email"] or "." not in clean["email"].rpartition("@")[2]:
+            problems.append("email")
+        if clean["topic"] not in self.TOPICS:
+            problems.append("topic")
+        if "http://" in clean["name"].lower() or "https://" in clean["name"].lower():
+            problems.append("name")
+        if problems:
+            return Response({"error": "invalid", "fields": sorted(set(problems))}, status=status.HTTP_400_BAD_REQUEST)
+        topic_label, mailbox_setting = self.TOPICS[clean["topic"]]
+        mailbox = getattr(settings, mailbox_setting, "") or settings.EDULAGE_SUPPORT_EMAIL
+        subject = clean["subject"] or f"{topic_label} enquiry"
+        details = [("From", f"{clean['name']} <{clean['email']}>"), ("Organisation", clean["organisation"]), ("Topic", topic_label)]
+        log.info("edulage: contact message from %s (%s)", clean["email"].lower(), topic_label)
+        delivered = emails.send_notice(
+            [mailbox], f"[edulage.org] {subject}", "Website enquiry", subject, [clean["message"]], details,
+            footnote=f"Reply directly to {clean['email']}.",
+        )
+        if not delivered:
+            return Response({"error": "undelivered"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        emails.send_notice(
+            [clean["email"]], "We received your message",
+            "Contact EduLage", f"Thank you, {clean['name'].split()[0]}",
+            [
+                f"Your enquiry about {topic_label.lower()} has reached the right EduLage team. We usually reply within two working days.",
+                "Admissions, fees and academic decisions remain with the awarding institution; where your question concerns one, we will point you to the right contact there.",
+            ],
+            [("Subject", subject), ("Your message", clean["message"][:600])],
+            footnote="If you did not send this message, you can ignore this e-mail.",
+        )
+        return Response({"status": "received"}, status=status.HTTP_202_ACCEPTED)
 
 
 STUDIO_ROLES = {"staff", "instructor", "org_course_creator_group", "course_creator_group", "library_user"}

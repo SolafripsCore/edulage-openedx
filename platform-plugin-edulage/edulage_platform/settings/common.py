@@ -58,6 +58,8 @@ def plugin_settings(settings):
         settings.EDULAGE_REQUIRE_SSO_REGISTRATION = True
     if not hasattr(settings, "EDULAGE_PARTNERS_EMAIL"):
         settings.EDULAGE_PARTNERS_EMAIL = "admin@edulage.org"
+    if not hasattr(settings, "EDULAGE_SUPPORT_EMAIL"):
+        settings.EDULAGE_SUPPORT_EMAIL = "support@edulage.org"
     for engine in settings.TEMPLATES:
         if engine["BACKEND"] == "django.template.backends.django.DjangoTemplates":
             dirs = list(engine.get("DIRS", []))

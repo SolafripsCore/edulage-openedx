@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import AdmissionsView, DashboardApplicationsView, DashboardCoursesView, ListingsView, MeView, PartnerRequestView, PublicCatalogueView, PublicCredentialView, PublicInstitutionView, PublicRunsView, RolesView, SupportLearnerView, TenantHostCheckView, UserStatusView
+from .views import AdmissionsView, ContactMessageView, DashboardApplicationsView, DashboardCoursesView, ListingsView, MeView, PartnerRequestView, PublicCatalogueView, PublicCredentialView, PublicInstitutionView, PublicRunsView, RolesView, SupportLearnerView, TenantHostCheckView, UserStatusView
 
 urlpatterns = [
     path("v1/admissions/", AdmissionsView.as_view(), name="admissions"),
@@ -9,6 +9,7 @@ urlpatterns = [
     path("v1/support/learners/", SupportLearnerView.as_view(), name="support-learners"),
     path("v1/listings/", ListingsView.as_view(), name="listings"),
     path("v1/me/", MeView.as_view(), name="me"),
+    path("v1/contact/", ContactMessageView.as_view(), name="contact"),
     path("v1/partner-requests/", PartnerRequestView.as_view(), name="partner-requests"),
     path("v1/tenant-hosts/check/", TenantHostCheckView.as_view(), name="tenant-host-check"),
     path("v1/institutions/<str:code>/", PublicInstitutionView.as_view(), name="institution"),
