@@ -26,6 +26,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.utils.http import url_has_allowed_host_and_scheme
 
+import social_django.utils  # noqa: F401  -- pipeline.get() references social_django.utils without importing it
 from common.djangoapps.third_party_auth import pipeline
 
 from .auth import REGISTER_PARAM
