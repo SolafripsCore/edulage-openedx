@@ -13,6 +13,8 @@ config:
     BILLING_EMAIL: billing@edulage.org
     # Receives new institution requests from the edulage.org "Register your institution" form.
     PARTNERS_EMAIL: admin@edulage.org
+    # Receives learner/privacy/general messages from the edulage.org contact form.
+    SUPPORT_EMAIL: support@edulage.org
     # Institution console → IdP admin client (infra/keycloak/create-console-client.py prints the secret;
     # set it on the host with `tutor config save --set EDULAGE_KC_CLIENT_SECRET=...`, never in this repo).
     KC_URL: http://edulage-keycloak:8080
@@ -68,12 +70,13 @@ patches:
     MKTG_URLS["COURSES"] = "/programmes"
     # edulage.org reads the learner session (GET /api/user/v1/me) to show "My learning" in its header
     # and the public run policy/price (GET /edulage/api/v1/runs/) for programme-page CTAs.
-    CORS_ORIGIN_WHITELIST += ["https://edulage.org", "https://www.edulage.org"]
+    CORS_ORIGIN_WHITELIST += ["https://edulage.org", "https://www.edulage.org", "https://staging2.edulage.org"]
     # Open-enrolment payments (edulage_platform.payments)
     EDULAGE_PAYSTACK_SECRET_KEY = "{{ EDULAGE_PAYSTACK_SECRET_KEY }}"
     EDULAGE_PAYSTACK_PUBLIC_KEY = "{{ EDULAGE_PAYSTACK_PUBLIC_KEY }}"
     EDULAGE_BILLING_EMAIL = "{{ EDULAGE_BILLING_EMAIL }}"
     EDULAGE_PARTNERS_EMAIL = "{{ EDULAGE_PARTNERS_EMAIL }}"
+    EDULAGE_SUPPORT_EMAIL = "{{ EDULAGE_SUPPORT_EMAIL }}"
     # Institution console (edulage_platform.console) writes staff roles to the IdP
     EDULAGE_KC_URL = "{{ EDULAGE_KC_URL }}"
     EDULAGE_KC_CLIENT_ID = "{{ EDULAGE_KC_CLIENT_ID }}"
