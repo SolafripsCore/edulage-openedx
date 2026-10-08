@@ -1,4 +1,4 @@
-/* EduLage login theme — brand tokens from edulage.org (globals.css) applied over PatternFly v5. */
+/* EduLage login theme — expressive edulage.org brand tokens (forest green / ivory / gold) applied over PatternFly v5. */
 
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap;
   src: url("../fonts/inter-latin-ext.woff2") format("woff2");
@@ -14,10 +14,10 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 
 :root {
-  --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f; --navy-600: #22376f;
-  --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
-  --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
-  --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff; --slate-300: #cbd5e1;
+  --navy-900: #102f36; --navy-800: #123c36; --navy-700: #0d4a44; --navy-600: #1d5a52;
+  --teal-600: #086e5c; --teal-500: #08705f; --teal-400: #2fa58c;
+  --ink-900: #102d36; --ink-600: #536c62; --ink-400: #7b8f86;
+  --line: #e0e7e2; --surface: #fffdf8; --white: #ffffff; --slate-300: #cfddd3; --gold: #edb956;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-heading: "Plus Jakarta Sans", var(--font-sans);
   --radius-md: 12px; --header-h: 72px;
@@ -70,11 +70,11 @@ html.edulage, .edulage body { height: auto; min-height: 100%; }
 .el-hero__inner { padding: 96px 64px; max-width: 560px; }
 .el-hero__eyebrow { margin: 0 0 20px; padding-left: 44px; position: relative; font-size: .75rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--teal-400); }
 .el-hero__eyebrow::before { content: ""; position: absolute; left: 0; top: 50%; width: 32px; height: 1px; background: var(--teal-400); }
-.el-hero__title { margin: 0; font-family: var(--font-heading); font-size: clamp(2.25rem, 3.4vw, 3.25rem); font-weight: 800; line-height: 1.08; letter-spacing: -.02em; }
-.el-hero__title .el-accent { color: var(--teal-400); }
+.el-hero__title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.5rem, 3.6vw, 3.5rem); font-weight: 400; line-height: 1.08; letter-spacing: -.035em; }
+.el-hero__title .el-accent { color: var(--gold); font-style: italic; }
 .el-hero__lead { margin: 24px 0 0; max-width: 27rem; font-size: 1.0625rem; line-height: 1.6; color: var(--slate-300); }
 .el-hero__points { margin: 32px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-.el-hero__points li { position: relative; padding-left: 28px; font-size: .9375rem; color: #e2e8f0; }
+.el-hero__points li { position: relative; padding-left: 28px; font-size: .9375rem; color: #e0e7e2; }
 .el-hero__points li::before { content: ""; position: absolute; left: 0; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--teal-500);
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23000'/%3E%3Cpath d='M4.5 8.5l2.2 2.2L11.5 6' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23000'/%3E%3Cpath d='M4.5 8.5l2.2 2.2L11.5 6' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat; }

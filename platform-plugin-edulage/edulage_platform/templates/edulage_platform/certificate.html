@@ -17,10 +17,10 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="${el['brand_url'] | h}/fonts/plusjakartasans-latin.woff2">
   <style>
     :root {
-      --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f; --navy-600: #22376f;
-      --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
-      --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
-      --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff;
+      --navy-900: #102f36; --navy-800: #123c36; --navy-700: #0d4a44; --navy-600: #1d5a52;
+      --teal-600: #086e5c; --teal-500: #08705f; --teal-400: #2fa58c;
+      --ink-900: #102d36; --ink-600: #536c62; --ink-400: #7b8f86;
+      --line: #e0e7e2; --surface: #f3f6f2; --white: #ffffff;
     }
     @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("${el['brand_url'] | h}/fonts/inter-latin.woff2") format("woff2"); }
     @font-face { font-family: "Plus Jakarta Sans"; font-weight: 200 800; font-display: swap; src: url("${el['brand_url'] | h}/fonts/plusjakartasans-latin.woff2") format("woff2"); }
@@ -59,7 +59,7 @@
     .intro h1 { margin: 0 0 12px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800; font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.12; letter-spacing: -0.02em; color: var(--navy-800); }
     .intro p { margin: 0; color: var(--ink-600); line-height: 1.65; }
 
-    .certificate { position: relative; max-width: 1040px; margin: 0 auto; background: var(--white); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: 0 24px 60px rgba(6, 16, 52, 0.10); overflow: hidden; }
+    .certificate { position: relative; max-width: 1040px; margin: 0 auto; background: var(--white); border: 1px solid var(--line); border-radius: 1.25rem; box-shadow: 0 24px 60px rgba(16, 47, 54, 0.10); overflow: hidden; }
     .certificate::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 40% at 100% 0%, rgba(16,165,133,0.10), transparent 60%), radial-gradient(50% 40% at 0% 100%, rgba(9,24,79,0.06), transparent 60%); pointer-events: none; }
     .cert-top { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 36px 56px 0; }
     .cert-top .org img { max-height: 64px; max-width: 220px; width: auto; display: block; }
@@ -128,7 +128,7 @@
       .header, .banner, .about, .footer, .intro { display: none !important; }
       main { padding: 0; }
       .container { width: 100%; }
-      .certificate { box-shadow: none; border-color: #cbd5e1; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; max-width: none; font-size: 0.85rem; }
+      .certificate { box-shadow: none; border-color: #cfddd3; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; max-width: none; font-size: 0.85rem; }
       .certificate::before { display: none; }
       .cert-top { padding: 18px 36px 0; }
       .cert-top .org img { max-height: 44px; }

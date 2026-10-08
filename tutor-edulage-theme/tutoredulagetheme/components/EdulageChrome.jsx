@@ -11,58 +11,55 @@ const EL_MAIN_LINKS = [
 ];
 
 const EL_CATALOGUE_LINKS = [
-  ['Open Education Centers', '/open-education-centers'],
   ['For institutions', '/for-institutions'],
   ['About', '/about'],
 ];
 
 const EL_UTILITY_LINKS = [
-  ['GOE Initiative', '/goe'],
-  ['Global Network', '/institutions'],
+  ['GOE Centers', '/open-education-centers'],
+  ['Quality & trust', '/quality-and-trust'],
   ['Help & Support', '/help'],
   ['Verify a credential', '/verify'],
 ];
 
 const EL_STUDY_TYPE_LINKS = [
   ["Bachelor's degrees", '/programmes?level=Undergraduate'],
-  ["Master's degrees", '/programmes?level=Postgraduate'],
+  ['Postgraduate study', '/programmes?level=Postgraduate'],
   ['Doctoral / PhD', '/programmes?level=Doctoral'],
   ['Professional diplomas & certificates', '/programmes?level=Professional'],
+  ['Short courses', '/programmes?level=Short+courses'],
   ['Fully online', '/programmes?mode=Fully+online'],
-  ['Online + OEC exams', '/programmes?mode=Online+%2B+OEC+exams'],
+  ['Online + GOE Center exams', '/programmes?mode=Online+%2B+OEC+exams'],
 ];
 
 const EL_FOOTER_COLUMNS = [
-  ['Explore', [
-    ['Browse programmes', '/programmes'],
-    ['Featured institutions', '/institutions'],
+  ['Discover', [
+    ['Programmes & courses', '/programmes'],
+    ['Institutions', '/institutions'],
     ['Study options', '/study-types'],
-    ['Find an OEC', '/open-education-centers'],
+    ['GOE Centers', '/open-education-centers'],
   ]],
-  ['Institutions', [
-    ['Why EduLage', '/for-institutions'],
-    ['Readiness requirements', '/for-institutions'],
-    ['Apply to join', '/for-institutions'],
-    ['Course production', '/for-institutions'],
-  ]],
-  ['Access & support', [
-    ['Open Education Centers', '/open-education-centers'],
-    ['OEC standards', '/open-education-centers'],
-    ['Learner support', '/help'],
+  ['For learners', [
+    ['My learning', 'dashboard'],
+    ['Help & support', '/help'],
     ['Verify a credential', '/verify'],
+    ['Quality & trust', '/quality-and-trust'],
   ]],
-  ['Global network', [
+  ['Work with us', [
+    ['For institutions', '/for-institutions'],
+    ['Become a center partner', '/open-education-centers#operate'],
     ['GOE Initiative', '/goe'],
-    ['Countries', '/institutions'],
-    ['Governments & partners', '/goe'],
-    ['Institutional network', '/institutions'],
+    ['Contact us', '/contact'],
   ]],
-  ['About EduLage', [
-    ['Our model', '/about'],
-    ['Quality and trust', '/quality-and-trust'],
-    ['Governance', '/about'],
-    ['Contact', '/contact'],
-  ]],
+];
+
+const EL_LEGAL_LINKS = [
+  ['Privacy', '/privacy'],
+  ['Terms', '/terms'],
+  ['Refunds', '/refunds'],
+  ['Cookies', '/cookies'],
+  ['Accessibility', '/accessibility'],
+  ['Data protection', '/data-protection'],
 ];
 
 const elConfig = () => {
@@ -406,54 +403,40 @@ const EdulageLearningHeader = ({ courseOrg, courseNumber, courseTitle }) => {
 const ElFooterLegal = ({ c }) => (
   <div className="el-footer__legal">
     <p>© {new Date().getFullYear()} {c.copyright}. All rights reserved.</p>
-    <div>
-      <a href={`${c.site}/privacy`}>Privacy</a>
-      <a href={`${c.site}/terms`}>Terms</a>
-      <a href={`${c.site}/accessibility`}>Accessibility</a>
-      <a href={`${c.site}/data-protection`}>Data protection</a>
-      <a href={`${c.site}/contact`}>Contact</a>
-      <span aria-label="Current site language">English (default)</span>
-    </div>
+    <nav aria-label="Legal and accessibility">
+      {EL_LEGAL_LINKS.map(([label, href]) => <a key={label} href={`${c.site}${href}`}>{label}</a>)}
+    </nav>
+    <span lang="en">English</span>
   </div>
 );
 
+/** Port of EduLage/src/components/Footer.tsx (light footer, brand column + three link columns). */
 const EdulageFooter = () => {
   const c = elConfig();
   return (
     <footer className="el-footer" role="contentinfo">
       <div className="el-container">
-        <div className="el-footer__main">
-          <div className="el-footer__lead">
-            <div>
-              <img src={c.logoWhite} alt="EduLage" width="150" height="54" className="el-footer__logo" />
-              <p className="el-footer__statement">
-                {c.tagline}—connecting learners to quality open and online education from reputable
-                tertiary institutions worldwide.
-              </p>
-            </div>
-            <div className="el-footer__help">
-              <p className="el-footer__help-title">Need help finding the right pathway?</p>
-              <p className="el-footer__help-text">
-                Explore programmes, participating institutions and supported access options.
-              </p>
-              <div className="el-footer__help-actions">
-                <a href={`${c.site}/programmes`} className="el-footer__help-primary">Explore programmes</a>
-                <a href={`${c.site}/help`} className="el-footer__help-secondary">Help & support</a>
-              </div>
-            </div>
+        <div className="el-footer__grid">
+          <div className="el-footer__brand">
+            <a href={c.site} aria-label="EduLage home">
+              <img src={c.logo} alt="EduLage" width="150" height="54" className="el-footer__logo" />
+            </a>
+            <p className="el-footer__tagline">{c.tagline}</p>
+            <p>Connecting ambition with education, institutions and opportunity.</p>
+            <a href={`${c.site}/about`} className="el-footer__about">About EduLage</a>
           </div>
-          <div className="el-footer__columns">
-            {EL_FOOTER_COLUMNS.map(([title, items]) => (
-              <div key={title}>
-                <h3>{title}</h3>
-                <ul>
-                  {items.map(([label, href]) => (
-                    <li key={label}><a href={`${c.site}${href}`}>{label}</a></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {EL_FOOTER_COLUMNS.map(([title, items]) => (
+            <div key={title}>
+              <h2>{title}</h2>
+              <ul>
+                {items.map(([label, href]) => (
+                  <li key={label}>
+                    <a href={href === 'dashboard' ? c.dashboard : `${c.site}${href}`}>{label}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <ElFooterLegal c={c} />
       </div>
@@ -551,18 +534,151 @@ const EdulageApplicationsPanel = () => {
   );
 };
 
+/** Generic fetch of one dashboard collection from the platform plugin; null while loading, [] on error. */
+const useElDashboard = (path, key) => {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const c = elConfig();
+    if (!c.lms) { return undefined; }
+    let alive = true;
+    getAuthenticatedHttpClient()
+      .get(`${c.lms}/edulage/api/v1/dashboard/${path}/`)
+      .then((r) => { if (alive) { setItems(r.data[key] || []); } })
+      .catch(() => { if (alive) { setItems([]); } });
+    return () => { alive = false; };
+  }, [path, key]);
+  return items;
+};
+
+const elMoney = (amount, currency) => {
+  const n = Number(amount);
+  if (Number.isNaN(n)) { return `${currency} ${amount}`; }
+  try {
+    return new Intl.NumberFormat('en-NG', { style: 'currency', currency, maximumFractionDigits: 2 }).format(n);
+  } catch (e) {
+    return `${currency} ${n.toFixed(2)}`;
+  }
+};
+
+const EL_PAY_TONE = { success: 'ok', failed: 'bad', abandoned: 'muted' };
+
+/** Learner dashboard — "Payments & receipts" panel: the learner's own course fee payments. */
+const EdulagePaymentsPanel = () => {
+  const c = elConfig();
+  const payments = useElDashboard('payments', 'payments');
+  if (!payments) { return null; }
+  return (
+    <section className="el-apps el-pay" aria-labelledby="el-pay-title">
+      <p className="el-eyebrow">Payments</p>
+      <h2 id="el-pay-title" className="el-apps__title">Payments &amp; receipts</h2>
+      {payments.length === 0 ? (
+        <p className="el-apps__empty">
+          No payments yet. Fees for paid short courses are settled securely through Paystack when you
+          enrol; every successful payment appears here with a printable receipt.
+          {' '}<a href={`${c.site}/refunds`}>Refund policy</a>
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {payments.map((p) => (
+            <li key={p.reference} className="el-apps__item">
+              <div>
+                <p className="el-apps__programme">{p.title || p.programme_title || p.course_id}</p>
+                <p className="el-apps__meta">
+                  {p.institution_name} · {elMoney(p.amount, p.currency)} · {elFormatDate(p.paid_at || p.created)}
+                </p>
+                {p.receipt_url && <a className="el-apps__action" href={p.receipt_url}>View receipt <span aria-hidden="true">→</span></a>}
+              </div>
+              <span className={`el-apps__status el-apps__status--${EL_PAY_TONE[p.status] || 'open'}`}>{p.status_label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+/** Learner dashboard — "Certificates" panel: issued credentials with view/verify links. */
+const EdulageCertificatesPanel = () => {
+  const c = elConfig();
+  const certs = useElDashboard('certificates', 'certificates');
+  if (!certs) { return null; }
+  return (
+    <section className="el-apps el-certs" aria-labelledby="el-certs-title">
+      <p className="el-eyebrow">Credentials</p>
+      <h2 id="el-certs-title" className="el-apps__title">Certificates</h2>
+      {certs.length === 0 ? (
+        <p className="el-apps__empty">
+          Certificates you earn are issued by the awarding institution and listed here with a public
+          verification link. <a href={`${c.site}/verify`}>How verification works</a>
+        </p>
+      ) : (
+        <ul className="el-apps__list">
+          {certs.map((k) => (
+            <li key={k.credential_id} className="el-apps__item el-apps__item--stack">
+              <div>
+                <p className="el-apps__programme">{k.title || k.programme_title || k.course_id}</p>
+                <p className="el-apps__meta">
+                  {k.institution_name}{k.credential ? ` · ${k.credential}` : ''} · Issued {elFormatDate(k.issued)}
+                </p>
+                <p className="el-apps__meta el-apps__meta--id">ID {k.credential_id}</p>
+                <div className="el-apps__actions">
+                  <a className="el-apps__action" href={k.certificate_url}>View certificate <span aria-hidden="true">→</span></a>
+                  <a className="el-apps__action" href={k.verify_url}>Verify <span aria-hidden="true">→</span></a>
+                </div>
+              </div>
+              <span className="el-apps__status el-apps__status--ok">Issued</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+};
+
+/** Learner dashboard — "Your account" panel: profile, settings, sign-out. */
+const EdulageAccountPanel = () => {
+  const c = elConfig();
+  const user = getAuthenticatedUser();
+  if (!user) { return null; }
+  const items = [
+    ['Account settings', c.account, 'Name, e-mail, password and sign-in security.'],
+    ['Public profile', `${c.profile}/u/${user.username}`, 'What other learners and institutions can see about you.'],
+    ['Sign out', c.logout, null],
+  ];
+  return (
+    <section className="el-apps el-account" aria-labelledby="el-account-title">
+      <p className="el-eyebrow">Account</p>
+      <h2 id="el-account-title" className="el-apps__title">{user.name || user.username}</h2>
+      <p className="el-apps__meta">{user.email}</p>
+      <ul className="el-apps__list">
+        {items.map(([label, href, text]) => (
+          <li key={label} className="el-apps__item">
+            <div>
+              <a className="el-apps__action" href={href}>{label} <span aria-hidden="true">→</span></a>
+              {text && <p className="el-apps__meta">{text}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 /** Learner dashboard — right-hand sidebar (widget_sidebar slot). */
 const EdulageDashboardSidebar = () => {
   const c = elConfig();
   const items = [
     ['Explore more programmes', `${c.site}/programmes`, 'Degrees, professional programmes and short courses from participating institutions.'],
-    ['Find an Open Education Center', `${c.site}/open-education-centers`, 'Local study support, supervised examinations and internet access.'],
+    ['Find a GOE Center', `${c.site}/open-education-centers`, 'Local study support, supervised examinations and internet access.'],
     ['Verify a credential', `${c.site}/verify`, 'Credentials are issued by institutions and recorded and verified by EduLage.'],
     ['Learner support', c.support, 'Help with access, enrolment and your learning schedule.'],
   ];
   return (
     <>
     <EdulageApplicationsPanel />
+    <EdulagePaymentsPanel />
+    <EdulageCertificatesPanel />
+    <EdulageAccountPanel />
     <aside className="el-side" aria-label="EduLage services">
       <p className="el-eyebrow">EduLage</p>
       <ul className="el-side__list">

@@ -1,10 +1,10 @@
   <style>
-    /* Tokens mirror EduLage/src/app/globals.css */
+    /* Tokens mirror EduLage/src/app/{globals,home}.css (expressive design) */
     :root {
-      --navy-900: #061034; --navy-800: #09184f; --navy-700: #14265f;
-      --teal-600: #0e8e73; --teal-500: #10a585; --teal-400: #2fbd9e;
-      --ink-900: #0b1220; --ink-600: #475569; --ink-400: #94a3b8;
-      --line: #e2e8f0; --surface: #f7f9fc; --white: #ffffff;
+      --navy-900: #102f36; --navy-800: #123c36; --navy-700: #0d4a44;
+      --teal-600: #086e5c; --teal-500: #08705f; --teal-400: #2fa58c;
+      --ink-900: #102d36; --ink-600: #536c62; --ink-400: #7b8f86;
+      --line: #e0e7e2; --surface: #f3f6f2; --white: #ffffff;
     }
     @font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("{{ brand_url }}/fonts/inter-latin.woff2") format("woff2"); }
     @font-face { font-family: "Plus Jakarta Sans"; font-weight: 200 800; font-display: swap; src: url("{{ brand_url }}/fonts/plusjakartasans-latin.woff2") format("woff2"); }
@@ -28,14 +28,14 @@
     main { flex: 1; display: flex; align-items: center; padding: 64px 0; }
     .card {
       max-width: 640px; margin: 0 auto; background: var(--white); border: 1px solid var(--line);
-      border-radius: 1rem; padding: 40px; box-shadow: 0 18px 45px rgba(6, 16, 52, 0.09);
+      border-radius: 1rem; padding: 40px; box-shadow: 0 18px 45px rgba(16, 47, 54, 0.09);
     }
     .eyebrow {
       display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 4px 10px;
-      border-radius: 999px; background: rgba(16, 165, 133, 0.1); color: var(--teal-600);
+      border-radius: 999px; background: rgba(8, 110, 92, 0.1); color: var(--teal-600);
       font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     }
-    .eyebrow.warn { background: rgba(9, 24, 79, 0.06); color: var(--navy-700); }
+    .eyebrow.warn { background: rgba(18, 60, 54, 0.06); color: var(--navy-700); }
     h1 {
       margin: 0 0 16px; font-family: "Plus Jakarta Sans", Arial, sans-serif; font-weight: 800;
       font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1.12; letter-spacing: -0.02em; color: var(--navy-800);

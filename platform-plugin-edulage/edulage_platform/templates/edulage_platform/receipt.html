@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Receipt {{ reference }} · {{ platform_name }}</title>
+  <link rel="icon" href="{{ brand_url }}/favicon.ico">
+  {% include "edulage_platform/_brand_style.html" %}
+  <style>
+    main { align-items: flex-start; padding: 40px 0 64px; }
+    .receipt { max-width: 720px; margin: 0 auto; background: var(--white); border: 1px solid var(--line); border-radius: 1rem; overflow: hidden; box-shadow: 0 18px 45px rgba(23, 62, 48, 0.08); }
+    .receipt__head { background: var(--navy-800); color: var(--white); padding: 28px 32px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .receipt__head p { margin: 0; font-size: 0.8125rem; color: #cfddd3; }
+    .receipt__amount { color: var(--white); font-family: Georgia, "Times New Roman", serif; font-size: 2.25rem; letter-spacing: -0.03em; margin: 6px 0 0; }
+    .receipt__body { padding: 28px 32px; }
+    dl { display: grid; grid-template-columns: 1fr 2fr; gap: 12px 24px; margin: 0; font-size: 0.9375rem; }
+    dt { color: var(--ink-400); font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    dd { margin: 0; color: var(--ink-900); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .btn { display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 0.875rem; text-decoration: none; border: 1px solid var(--navy-800); }
+    .btn-primary { background: var(--navy-800); color: var(--white); }
+    .btn-secondary { background: var(--white); color: var(--navy-800); }
+    .note { margin-top: 24px; font-size: 0.8125rem; color: var(--ink-600); line-height: 1.6; }
+    @media print { .header, footer, .actions { display: none; } body { background: #fff; } .receipt { box-shadow: none; border: 0; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <a href="{{ site_url }}" aria-label="EduLage home"><img src="{{ brand_url }}/images/edulage-logo.png" alt="EduLage"></a>
+      <nav style="display:flex;gap:20px;">
+        <a class="back" href="{{ dashboard_url }}">My learning</a>
+        <a class="back" href="/logout">Sign out</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="container">
+      <article class="receipt" aria-labelledby="receipt-title">
+        <div class="receipt__head">
+          <div>
+            <p>Payment receipt</p>
+            <h1 id="receipt-title" class="receipt__amount">{{ currency }} {{ amount }}</h1>
+          </div>
+          <div style="text-align:right">
+            <p>Reference</p>
+            <p style="color:#fff;font-weight:700;font-size:0.9375rem;margin-top:4px">{{ reference }}</p>
+            <p style="margin-top:10px">{{ paid_at }}</p>
+          </div>
+        </div>
+        <div class="receipt__body">
+          <dl>
+            <dt>Paid by</dt><dd>{{ learner_name }}<br><span style="color:var(--ink-600)">{{ learner_email }}</span></dd>
+            <dt>Course</dt><dd><a href="{{ course_url }}">{{ course_title }}</a>{% if programme_title %}<br><span style="color:var(--ink-600)">{{ programme_title }}</span>{% endif %}</dd>
+            <dt>Institution</dt><dd>{{ institution }}</dd>
+            <dt>Type</dt><dd>{{ classification }}{% if credential %} · {{ credential }}{% endif %}</dd>
+            {% if channel %}<dt>Paid via</dt><dd>Paystack · {{ channel }}</dd>{% endif %}
+            <dt>Status</dt><dd>Paid — enrolled</dd>
+          </dl>
+          <div class="actions">
+            <a class="btn btn-primary" href="{{ course_url }}">Go to course</a>
+            <a class="btn btn-secondary" href="javascript:window.print()">Print / save PDF</a>
+          </div>
+          <p class="note">Fees are set and received on behalf of the institution; EduLage processes the payment through Paystack. For refunds see <a href="{{ site_url }}/refunds">the refund policy</a>, or write to <a href="mailto:{{ billing_email }}">{{ billing_email }}</a> quoting the reference above.</p>
+        </div>
+      </article>
+    </div>
+  </main>
+  <footer>
+    <div class="container">
+      <p style="color: inherit; font-size: inherit;">© {% now "Y" %} EduLage.org. All rights reserved.</p>
+      <nav aria-label="Legal">
+        <a href="{{ site_url }}/privacy">Privacy</a>
+        <a href="{{ site_url }}/terms">Terms</a>
+        <a href="{{ site_url }}/refunds">Refunds</a>
+        <a href="{{ site_url }}/help">Help &amp; support</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
